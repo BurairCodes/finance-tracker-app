@@ -46,8 +46,8 @@ export default function TransactionModal({ visible, onClose, onSave }: Transacti
   };
 
   const handleSave = async () => {
-    if (!formData.category.trim() || !formData.amount.trim()) {
-      Alert.alert('Error', 'Please fill in all required fields');
+    if (!formData.amount.trim()) {
+      Alert.alert('Error', 'Please enter an amount');
       return;
     }
 
@@ -63,7 +63,7 @@ export default function TransactionModal({ visible, onClose, onSave }: Transacti
 
     const amount = parseFloat(formData.amount);
     
-    // Always use AI categorization to enhance or validate category
+    // Use AI categorization to determine category if not provided
     const prediction = AIService.categorizeTransaction(
       formData.description || '',
       formData.type === 'expense' ? -amount : amount
@@ -73,6 +73,12 @@ export default function TransactionModal({ visible, onClose, onSave }: Transacti
     let finalCategory = formData.category;
     if (!finalCategory || finalCategory === '' || prediction.confidence > 0.8) {
       finalCategory = prediction.category;
+    }
+
+    // Final validation - ensure we have a category (either user-selected or AI-suggested)
+    if (!finalCategory || finalCategory === '') {
+      Alert.alert('Error', 'Unable to categorize transaction. Please select a category manually.');
+      return;
     }
 
     setLoading(true);
@@ -173,7 +179,7 @@ export default function TransactionModal({ visible, onClose, onSave }: Transacti
                 onValueChange={(value) => setFormData(prev => ({ ...prev, category: value }))}
                 style={styles.picker}
               >
-                <Picker.Item label="Select a category" value="" />
+                <Picker.Item label="Select a category (or leave empty for AI)" value="" />
                 {categories.map(category => (
                   <Picker.Item
                     key={category}
@@ -183,6 +189,11 @@ export default function TransactionModal({ visible, onClose, onSave }: Transacti
                 ))}
               </Picker>
             </View>
+            {!formData.category && formData.description && (
+              <Text style={styles.hintText}>
+                💡 AI will automatically categorize based on your description
+              </Text>
+            )}
           </View>
 
           <View style={styles.formGroup}>
@@ -329,5 +340,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textAlignVertical: 'top',
     fontFamily: 'Inter-Regular',
+  },
+  hintText: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginTop: 8,
+    fontFamily: 'Inter-Regular',
+    fontStyle: 'italic',
   },
 });
