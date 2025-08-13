@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # 💰 Finance Tracker App
 
 A comprehensive personal finance management application built with React Native, Expo, and Supabase.
@@ -230,3 +231,7 @@ This project is licensed under the MIT License.
 ---
 
 **Happy coding! 🚀**
+=======
+# finance-tracker-app
+A comprehensive personal finance management app built with React Native, Expo, and Supabase
+>>>>>>> 7382b7d086e9817429522ba8a266c4c2f3eb31f8
