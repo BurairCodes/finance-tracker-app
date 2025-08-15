@@ -6,6 +6,8 @@ import {
   ScrollView,
   TouchableOpacity,
   RefreshControl,
+  Platform,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -17,6 +19,7 @@ import { ExchangeRateService } from '@/services/exchangeRateService';
 import AuthScreen from '@/components/AuthScreen';
 import LoadingScreen from '@/components/LoadingScreen';
 import { router } from 'expo-router';
+import { responsiveStyles } from '@/utils/responsiveStyles';
 
 export default function DashboardScreen() {
   const { user, loading: authLoading } = useAuth();
@@ -106,7 +109,7 @@ export default function DashboardScreen() {
   const budgetAlerts = getBudgetAlerts();
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView
         style={styles.scrollView}
         refreshControl={
@@ -222,6 +225,7 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+    paddingBottom: Platform.OS === 'ios' ? 20 : 16,
   },
   header: {
     padding: 20,
@@ -332,7 +336,7 @@ const styles = StyleSheet.create({
   },
   emptyState: {
     alignItems: 'center',
-    padding: 40,
+    padding: 20,
   },
   emptyText: {
     fontSize: 18,
@@ -393,23 +397,5 @@ const styles = StyleSheet.create({
   expenseAmount: {
     color: '#DC2626',
   },
-  fab: {
-    position: 'absolute',
-    bottom: 20,
-    right: 20,
-    backgroundColor: '#2563EB',
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
+  fab: responsiveStyles.fab,
 });

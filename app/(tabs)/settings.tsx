@@ -8,7 +8,10 @@ import {
   TouchableOpacity,
   Alert,
   Modal,
+  Platform,
+  Dimensions,
 } from 'react-native';
+
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { 
   User, 
@@ -28,6 +31,8 @@ import { PDFService } from '@/services/pdfService';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useBudgets } from '@/hooks/useBudgets';
 import { router } from 'expo-router';
+
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 export default function SettingsScreen() {
   const { user, signOut } = useAuth();
@@ -199,10 +204,7 @@ export default function SettingsScreen() {
 
         {/* App Info */}
         <View style={styles.appInfo}>
-          <Text style={styles.appVersion}>Smart Finance Manager v1.0.0</Text>
-          <Text style={styles.appDescription}>
-            AI-powered personal finance management
-          </Text>
+          <Text style={styles.appVersion}>v1.0.0</Text>
         </View>
       </ScrollView>
 
@@ -337,6 +339,7 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+    paddingBottom: Platform.OS === 'ios' ? 95 : 70,
   },
   userCard: {
     flexDirection: 'row',
@@ -441,7 +444,8 @@ const styles = StyleSheet.create({
   },
   appInfo: {
     alignItems: 'center',
-    padding: 20,
+    padding: 12,
+    paddingTop: 4,
   },
   appVersion: {
     fontSize: 14,

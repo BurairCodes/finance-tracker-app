@@ -6,7 +6,10 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  Platform,
+  Dimensions,
 } from 'react-native';
+
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Plus, Target, TriangleAlert as AlertTriangle, CircleCheck as CheckCircle } from 'lucide-react-native';
 import { useAuth } from '@/hooks/useAuth';
@@ -16,6 +19,8 @@ import { ExchangeRateService } from '@/services/exchangeRateService';
 import { NotificationService } from '@/services/notificationService';
 import AuthScreen from '@/components/AuthScreen';
 import BudgetModal from '@/components/BudgetModal';
+
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 export default function BudgetsScreen() {
   const { user } = useAuth();
@@ -222,6 +227,7 @@ const styles = StyleSheet.create({
   budgetsList: {
     flex: 1,
     padding: 20,
+    paddingBottom: Platform.OS === 'ios' ? 95 : 70,
   },
   loadingText: {
     textAlign: 'center',

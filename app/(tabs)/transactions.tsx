@@ -8,7 +8,10 @@ import {
   Modal,
   TextInput,
   Alert,
+  Platform,
+  Dimensions,
 } from 'react-native';
+
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Picker } from '@react-native-picker/picker';
 import { 
@@ -25,6 +28,8 @@ import { ExchangeRateService } from '@/services/exchangeRateService';
 import AuthScreen from '@/components/AuthScreen';
 import TransactionModal from '@/components/TransactionModal';
 import EditTransactionModal from '@/components/EditTransactionModal';
+
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 export default function TransactionsScreen() {
   const { user } = useAuth();
@@ -385,6 +390,7 @@ const styles = StyleSheet.create({
   transactionsList: {
     flex: 1,
     padding: 20,
+    paddingBottom: Platform.OS === 'ios' ? 95 : 70,
   },
   loadingText: {
     textAlign: 'center',

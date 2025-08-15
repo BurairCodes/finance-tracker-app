@@ -5,6 +5,7 @@ import {
   StyleSheet,
   ScrollView,
   Dimensions,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { TrendingUp, ChartPie as PieChart, Calendar, TriangleAlert as AlertTriangle } from 'lucide-react-native';
@@ -14,7 +15,7 @@ import { AIService } from '@/services/aiService';
 import { ExchangeRateService } from '@/services/exchangeRateService';
 import AuthScreen from '@/components/AuthScreen';
 
-const { width } = Dimensions.get('window');
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 export default function AnalyticsScreen() {
   const { user } = useAuth();
@@ -267,6 +268,7 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: 20,
+    paddingBottom: Platform.OS === 'ios' ? 95 : 70,
   },
   loadingText: {
     textAlign: 'center',
