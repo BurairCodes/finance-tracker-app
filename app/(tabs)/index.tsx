@@ -11,13 +11,14 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { TrendingUp, TrendingDown, DollarSign, Plus, CircleAlert as AlertCircle } from 'lucide-react-native';
+import { TrendingUp, TrendingDown, DollarSign, Plus, CircleAlert as AlertCircle, Camera } from 'lucide-react-native';
 import { useAuth } from '@/hooks/useAuth';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useBudgets } from '@/hooks/useBudgets';
 import { ExchangeRateService } from '@/services/exchangeRateService';
 import AuthScreen from '@/components/AuthScreen';
 import LoadingScreen from '@/components/LoadingScreen';
+import ReceiptScanner from '@/components/ReceiptScanner';
 import { router } from 'expo-router';
 import { responsiveStyles } from '@/utils/responsiveStyles';
 
@@ -26,6 +27,7 @@ export default function DashboardScreen() {
   const { transactions, loading: transactionsLoading, refetch } = useTransactions(user?.id);
   const { budgets } = useBudgets(user?.id);
   const [refreshing, setRefreshing] = useState(false);
+  const [showReceiptScanner, setShowReceiptScanner] = useState(false);
   const [monthlyStats, setMonthlyStats] = useState({
     income: 0,
     expenses: 0,
@@ -208,12 +210,28 @@ export default function DashboardScreen() {
         </View>
       </ScrollView>
 
-      <TouchableOpacity 
-        style={styles.fab}
-        onPress={() => router.push('/(tabs)/transactions')}
-      >
-        <Plus size={24} color="white" />
-      </TouchableOpacity>
+      {/* Action Buttons */}
+      <View style={styles.actionButtons}>
+        <TouchableOpacity 
+          style={styles.fab}
+          onPress={() => router.push('/(tabs)/transactions')}
+        >
+          <Plus size={24} color="white" />
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={styles.receiptFab}
+          onPress={() => setShowReceiptScanner(true)}
+        >
+          <Camera size={24} color="white" />
+        </TouchableOpacity>
+      </View>
+
+      {/* Receipt Scanner Modal */}
+      <ReceiptScanner
+        isVisible={showReceiptScanner}
+        onClose={() => setShowReceiptScanner(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -398,4 +416,27 @@ const styles = StyleSheet.create({
     color: '#DC2626',
   },
   fab: responsiveStyles.fab,
+  actionButtons: {
+    position: 'absolute',
+    bottom: Platform.OS === 'ios' ? 100 : 80,
+    right: 20,
+    flexDirection: 'column',
+    gap: 12,
+  },
+  receiptFab: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#059669',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
 });

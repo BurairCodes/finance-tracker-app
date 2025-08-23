@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -21,18 +21,39 @@ interface TransactionModalProps {
   visible: boolean;
   onClose: () => void;
   onSave: (transaction: any) => Promise<void>;
+  initialData?: {
+    amount?: string;
+    description?: string;
+    category?: string;
+    date?: string;
+    currency?: string;
+  };
 }
 
-export default function TransactionModal({ visible, onClose, onSave }: TransactionModalProps) {
+export default function TransactionModal({ visible, onClose, onSave, initialData }: TransactionModalProps) {
   const [formData, setFormData] = useState({
     type: 'expense' as 'income' | 'expense',
-    amount: '',
-    currency: 'PKR',
-    category: '',
-    description: '',
-    date: new Date().toISOString().split('T')[0],
+    amount: initialData?.amount || '',
+    currency: initialData?.currency || 'PKR',
+    category: initialData?.category || '',
+    description: initialData?.description || '',
+    date: initialData?.date || new Date().toISOString().split('T')[0],
   });
   const [loading, setLoading] = useState(false);
+
+  // Update form data when initialData changes
+  useEffect(() => {
+    if (initialData) {
+      setFormData(prev => ({
+        ...prev,
+        amount: initialData.amount || prev.amount,
+        currency: initialData.currency || prev.currency,
+        category: initialData.category || prev.category,
+        description: initialData.description || prev.description,
+        date: initialData.date || prev.date,
+      }));
+    }
+  }, [initialData]);
 
   const resetForm = () => {
     setFormData({

@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { Chrome as Home, CreditCard, Target, ChartBar as BarChart3, Settings } from 'lucide-react-native';
+import { Chrome as Home, CreditCard, Target, ChartBar as BarChart3, Settings, MessageCircle } from 'lucide-react-native';
 import { Platform } from 'react-native';
 
 export default function TabLayout() {
@@ -67,6 +67,15 @@ export default function TabLayout() {
           title: 'Analytics',
           tabBarIcon: ({ size, color }) => (
             <BarChart3 size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="coach"
+        options={{
+          title: 'Coach',
+          tabBarIcon: ({ size, color }) => (
+            <MessageCircle size={size} color={color} />
           ),
         }}
       />
