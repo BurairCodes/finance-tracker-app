@@ -1,15 +1,24 @@
 {
   "expo": {
-    "name": "bolt-expo-nativewind",
-    "slug": "bolt-expo-nativewind",
+    "name": "Finance Tracker",
+    "slug": "finance-tracker",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "myapp",
+    "scheme": "finance-tracker",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "platforms": ["ios", "android", "web"],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.financetracker.app"
+    },
+    "android": {
+      "package": "com.financetracker.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundColor": "#0F0F23"
+      }
     },
     "web": {
       "bundler": "metro",
@@ -24,7 +33,7 @@
         "expo-notifications",
         {
           "icon": "./assets/images/icon.png",
-          "color": "#2563EB"
+          "color": "#8B5CF6"
         }
       ]
     ],

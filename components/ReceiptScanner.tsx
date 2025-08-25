@@ -32,6 +32,7 @@ import { useTransactions } from '@/hooks/useTransactions';
 import { OCRService, ReceiptData } from '@/services/ocrService';
 import { ExchangeRateService } from '@/services/exchangeRateService';
 import TransactionModal from './TransactionModal';
+import Theme from '@/constants/Theme';
 
 interface ReceiptScannerProps {
   isVisible: boolean;
@@ -123,7 +124,14 @@ export default function ReceiptScanner({ isVisible, onClose }: ReceiptScannerPro
     }
   };
 
-  const handleSaveTransaction = async (transactionData: any) => {
+  const handleSaveTransaction = async (transactionData: {
+    amount: number;
+    currency: string;
+    category: string;
+    type: 'income' | 'expense';
+    description: string;
+    date: string;
+  }) => {
     try {
       const transaction = {
         id: Date.now().toString(),
@@ -326,25 +334,26 @@ export default function ReceiptScanner({ isVisible, onClose }: ReceiptScannerPro
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: Theme.colors.background,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 20,
-    backgroundColor: 'white',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: Theme.colors.backgroundSecondary,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: Theme.colors.border,
+    minHeight: 60,
   },
   closeButton: {
     padding: 8,
   },
   title: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1F2937',
-    fontFamily: 'Inter-Bold',
+    fontSize: 20,
+    color: Theme.colors.textPrimary,
+    fontFamily: Theme.typography.fontFamily.bold,
   },
   placeholder: {
     width: 40,
@@ -354,38 +363,36 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 40,
-    backgroundColor: 'white',
+    backgroundColor: Theme.colors.background,
   },
   webIcon: {
     marginBottom: 24,
   },
   webTitle: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1F2937',
+    color: Theme.colors.textPrimary,
     marginBottom: 16,
-    fontFamily: 'Inter-Bold',
+    fontFamily: Theme.typography.fontFamily.bold,
   },
   webText: {
     fontSize: 16,
-    color: '#6B7280',
+    color: Theme.colors.textSecondary,
     textAlign: 'center',
     lineHeight: 24,
     marginBottom: 32,
     maxWidth: 400,
-    fontFamily: 'Inter-Regular',
+    fontFamily: Theme.typography.fontFamily.regular,
   },
   webButton: {
-    backgroundColor: '#2563EB',
+    backgroundColor: Theme.colors.primary,
     paddingVertical: 12,
     paddingHorizontal: 24,
-    borderRadius: 8,
+    borderRadius: 16,
   },
   webButtonText: {
     color: 'white',
     fontSize: 16,
-    fontWeight: '600',
-    fontFamily: 'Inter-SemiBold',
+    fontFamily: Theme.typography.fontFamily.semiBold,
   },
   uploadContainer: {
     flex: 1,
@@ -394,7 +401,7 @@ const styles = StyleSheet.create({
     padding: 40,
   },
   uploadArea: {
-    backgroundColor: 'white',
+    backgroundColor: Theme.colors.backgroundSecondary,
     borderRadius: 16,
     padding: 40,
     alignItems: 'center',
@@ -408,18 +415,19 @@ const styles = StyleSheet.create({
     elevation: 4,
     maxWidth: 400,
     width: '100%',
+    borderWidth: 1,
+    borderColor: Theme.colors.border,
   },
   uploadTitle: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1F2937',
+    color: Theme.colors.textPrimary,
     marginTop: 16,
     marginBottom: 8,
-    fontFamily: 'Inter-Bold',
+    fontFamily: Theme.typography.fontFamily.bold,
   },
   uploadSubtitle: {
     fontSize: 16,
-    color: '#6B7280',
+    color: Theme.colors.textSecondary,
     textAlign: 'center',
     marginBottom: 32,
     lineHeight: 24,
@@ -481,42 +489,41 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1F2937',
-    fontFamily: 'Inter-Bold',
+    color: Theme.colors.textPrimary,
+    fontFamily: Theme.typography.fontFamily.bold,
   },
   rawTextButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#EFF6FF',
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
     paddingVertical: 8,
     paddingHorizontal: 12,
-    borderRadius: 8,
+    borderRadius: 16,
   },
   rawTextButtonText: {
-    color: '#2563EB',
+    color: Theme.colors.info,
     fontSize: 14,
-    fontFamily: 'Inter-Medium',
+    fontFamily: Theme.typography.fontFamily.medium,
     marginLeft: 4,
   },
   rawTextContainer: {
-    backgroundColor: '#F9FAFB',
-    borderRadius: 8,
+    backgroundColor: Theme.colors.backgroundSecondary,
+    borderRadius: 16,
     padding: 12,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: Theme.colors.border,
   },
   rawTextLabel: {
     fontSize: 14,
-    color: '#6B7280',
-    fontFamily: 'Inter-Regular',
+    color: Theme.colors.textSecondary,
+    fontFamily: Theme.typography.fontFamily.regular,
     marginBottom: 8,
   },
   rawText: {
     fontSize: 14,
-    color: '#374151',
-    fontFamily: 'Inter-Regular',
+    color: Theme.colors.textPrimary,
+    fontFamily: Theme.typography.fontFamily.regular,
   },
   dataRow: {
     flexDirection: 'row',
@@ -524,98 +531,96 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     paddingVertical: 8,
     paddingHorizontal: 12,
-    backgroundColor: '#F9FAFB',
-    borderRadius: 8,
+    backgroundColor: Theme.colors.backgroundSecondary,
+    borderRadius: 16,
   },
   dataLabel: {
     fontSize: 16,
-    color: '#6B7280',
+    color: Theme.colors.textSecondary,
     marginLeft: 12,
     flex: 1,
-    fontFamily: 'Inter-Regular',
+    fontFamily: Theme.typography.fontFamily.regular,
   },
   dataValue: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#1F2937',
-    fontFamily: 'Inter-SemiBold',
+    color: Theme.colors.textPrimary,
+    fontFamily: Theme.typography.fontFamily.semiBold,
   },
   itemsContainer: {
     marginTop: 16,
     padding: 12,
-    backgroundColor: '#F9FAFB',
-    borderRadius: 8,
+    backgroundColor: Theme.colors.backgroundSecondary,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: Theme.colors.border,
   },
   itemsLabel: {
     fontSize: 14,
-    color: '#6B7280',
-    fontFamily: 'Inter-Regular',
+    color: Theme.colors.textSecondary,
+    fontFamily: Theme.typography.fontFamily.regular,
     marginBottom: 8,
   },
   itemText: {
     fontSize: 14,
-    color: '#374151',
-    fontFamily: 'Inter-Regular',
+    color: Theme.colors.textPrimary,
+    fontFamily: Theme.typography.fontFamily.regular,
     marginBottom: 4,
   },
   confidenceContainer: {
     alignItems: 'center',
     marginVertical: 16,
     padding: 12,
-    backgroundColor: '#EFF6FF',
-    borderRadius: 8,
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    borderRadius: 16,
   },
   confidenceText: {
     fontSize: 14,
-    color: '#1E40AF',
-    fontFamily: 'Inter-Medium',
+    color: Theme.colors.info,
+    fontFamily: Theme.typography.fontFamily.medium,
   },
   editButton: {
-    backgroundColor: '#2563EB',
+    backgroundColor: Theme.colors.primary,
     paddingVertical: 16,
     paddingHorizontal: 24,
-    borderRadius: 12,
+    borderRadius: 16,
     alignItems: 'center',
     marginTop: 20,
   },
   editButtonText: {
     color: 'white',
     fontSize: 16,
-    fontWeight: '600',
-    fontFamily: 'Inter-SemiBold',
+    fontFamily: Theme.typography.fontFamily.semiBold,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'white',
+    backgroundColor: Theme.colors.background,
   },
   loadingText: {
     fontSize: 16,
-    color: '#6B7280',
+    color: Theme.colors.textSecondary,
     marginTop: 16,
-    fontFamily: 'Inter-Regular',
+    fontFamily: Theme.typography.fontFamily.regular,
   },
   loadingSubtext: {
     fontSize: 14,
-    color: '#9CA3AF',
+    color: Theme.colors.textTertiary,
     marginTop: 4,
-    fontFamily: 'Inter-Regular',
+    fontFamily: Theme.typography.fontFamily.regular,
   },
   demoNote: {
-    backgroundColor: '#EFF6FF',
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
     padding: 12,
-    borderRadius: 8,
+    borderRadius: 16,
     marginBottom: 20,
     alignSelf: 'center',
     maxWidth: 300,
   },
   demoNoteText: {
     fontSize: 14,
-    color: '#1E40AF',
+    color: Theme.colors.info,
     textAlign: 'center',
-    fontFamily: 'Inter-Medium',
+    fontFamily: Theme.typography.fontFamily.medium,
   },
 });

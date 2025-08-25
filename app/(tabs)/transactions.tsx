@@ -28,6 +28,8 @@ import { ExchangeRateService } from '@/services/exchangeRateService';
 import AuthScreen from '@/components/AuthScreen';
 import TransactionModal from '@/components/TransactionModal';
 import EditTransactionModal from '@/components/EditTransactionModal';
+import Theme from '@/constants/Theme';
+import { Database } from '@/types/database';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -37,13 +39,20 @@ export default function TransactionsScreen() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showFilterModal, setShowFilterModal] = useState(false);
-  const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
+  const [selectedTransaction, setSelectedTransaction] = useState<Database['public']['Tables']['transactions']['Row'] | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');
   const [filterType, setFilterType] = useState('all');
   const [filterDateRange, setFilterDateRange] = useState('all');
 
-  const handleAddTransaction = async (transactionData: any) => {
+  const handleAddTransaction = async (transactionData: {
+    amount: number;
+    currency: string;
+    category: string;
+    type: 'income' | 'expense';
+    description: string;
+    date: string;
+  }) => {
     const { error } = await addTransaction(transactionData);
 
     if (error) {
@@ -51,7 +60,14 @@ export default function TransactionsScreen() {
     }
   };
 
-  const handleEditTransaction = async (id: string, updates: any) => {
+  const handleEditTransaction = async (id: string, updates: {
+    amount?: number;
+    currency?: string;
+    category?: string;
+    type?: 'income' | 'expense';
+    description?: string | null;
+    date?: string;
+  }) => {
     const { error } = await updateTransaction(id, updates);
 
     if (error) {
@@ -59,7 +75,7 @@ export default function TransactionsScreen() {
     }
   };
 
-  const openEditModal = (transaction: any) => {
+  const openEditModal = (transaction: Database['public']['Tables']['transactions']['Row']) => {
     setSelectedTransaction(transaction);
     setShowEditModal(true);
   };
@@ -130,6 +146,7 @@ export default function TransactionsScreen() {
           <TextInput
             style={styles.searchInput}
             placeholder="Search transactions..."
+            placeholderTextColor="#FFFFFF"
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
@@ -331,230 +348,215 @@ export default function TransactionsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: Theme.colors.background,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
-    backgroundColor: 'white',
+    padding: Theme.spacing.lg,
+    backgroundColor: Theme.colors.backgroundSecondary,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: Theme.colors.border,
   },
   title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1F2937',
-    fontFamily: 'Inter-Bold',
+    fontSize: Theme.typography.fontSize['2xl'],
+    color: Theme.colors.textPrimary,
+    fontFamily: Theme.typography.fontFamily.bold,
   },
   addButton: {
-    backgroundColor: '#2563EB',
+    backgroundColor: Theme.colors.primary,
     width: 40,
     height: 40,
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
+    ...Theme.shadows.md,
   },
   searchContainer: {
     flexDirection: 'row',
-    padding: 20,
-    gap: 12,
+    padding: Theme.spacing.lg,
+    gap: Theme.spacing.md,
   },
   searchBar: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderRadius: Theme.borderRadius.md,
+    padding: Theme.spacing.md,
+    ...Theme.cards.card,
   },
   searchInput: {
     flex: 1,
-    marginLeft: 8,
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
+    marginLeft: Theme.spacing.sm,
+    fontSize: Theme.typography.fontSize.base,
+    fontFamily: Theme.typography.fontFamily.regular,
+    color: Theme.colors.textPrimary,
   },
   filterButton: {
-    backgroundColor: 'white',
     width: 44,
     height: 44,
-    borderRadius: 12,
+    borderRadius: Theme.borderRadius.md,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    ...Theme.cards.card,
   },
   transactionsList: {
     flex: 1,
-    padding: 20,
+    padding: Theme.spacing.lg,
     paddingBottom: Platform.OS === 'ios' ? 95 : 70,
   },
   loadingText: {
     textAlign: 'center',
-    color: '#6B7280',
-    padding: 20,
-    fontFamily: 'Inter-Regular',
+    color: Theme.colors.textTertiary,
+    padding: Theme.spacing.lg,
+    fontFamily: Theme.typography.fontFamily.regular,
   },
   emptyState: {
     alignItems: 'center',
-    padding: 40,
+    padding: Theme.spacing['2xl'],
   },
   emptyText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 8,
-    fontFamily: 'Inter-SemiBold',
+    fontSize: Theme.typography.fontSize.lg,
+    color: Theme.colors.textSecondary,
+    marginBottom: Theme.spacing.sm,
+    fontFamily: Theme.typography.fontFamily.semiBold,
   },
   emptySubtext: {
-    fontSize: 14,
-    color: '#6B7280',
+    fontSize: Theme.typography.fontSize.sm,
+    color: Theme.colors.textTertiary,
     textAlign: 'center',
-    fontFamily: 'Inter-Regular',
+    fontFamily: Theme.typography.fontFamily.regular,
   },
   errorContainer: {
-    backgroundColor: '#FEF2F2',
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
     borderWidth: 1,
-    borderColor: '#FECACA',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
+    borderColor: Theme.colors.error,
+    borderRadius: Theme.borderRadius.md,
+    padding: Theme.spacing.md,
+    marginBottom: Theme.spacing.md,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   errorText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#DC2626',
-    marginBottom: 4,
-    fontFamily: 'Inter-SemiBold',
+    fontSize: Theme.typography.fontSize.base,
+    color: Theme.colors.error,
+    marginBottom: Theme.spacing.xs,
+    fontFamily: Theme.typography.fontFamily.semiBold,
   },
   errorSubtext: {
-    fontSize: 14,
-    color: '#6B7280',
-    fontFamily: 'Inter-Regular',
+    fontSize: Theme.typography.fontSize.sm,
+    color: Theme.colors.textTertiary,
+    fontFamily: Theme.typography.fontFamily.regular,
   },
   transactionCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'white',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    padding: Theme.spacing.md,
+    borderRadius: Theme.borderRadius.md,
+    marginBottom: Theme.spacing.md,
+    ...Theme.cards.card,
   },
   transactionIcon: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: Theme.colors.surface,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: Theme.spacing.md,
   },
   transactionDetails: {
     flex: 1,
   },
   transactionCategory: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: 2,
-    fontFamily: 'Inter-SemiBold',
+    fontSize: Theme.typography.fontSize.base,
+    color: Theme.colors.textPrimary,
+    marginBottom: Theme.spacing.xs,
+    fontFamily: Theme.typography.fontFamily.semiBold,
   },
   transactionDescription: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginBottom: 2,
-    fontFamily: 'Inter-Regular',
+    fontSize: Theme.typography.fontSize.sm,
+    color: Theme.colors.textTertiary,
+    marginBottom: Theme.spacing.xs,
+    fontFamily: Theme.typography.fontFamily.regular,
   },
   transactionDate: {
-    fontSize: 12,
-    color: '#9CA3AF',
-    fontFamily: 'Inter-Regular',
+    fontSize: Theme.typography.fontSize.xs,
+    color: Theme.colors.textTertiary,
+    fontFamily: Theme.typography.fontFamily.regular,
   },
   transactionAmount: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    fontFamily: 'Inter-Bold',
+    fontSize: Theme.typography.fontSize.base,
+    fontFamily: Theme.typography.fontFamily.bold,
   },
   incomeAmount: {
-    color: '#059669',
+    color: Theme.colors.success,
   },
   expenseAmount: {
-    color: '#DC2626',
+    color: Theme.colors.error,
   },
   filterModalContainer: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: Theme.colors.background,
   },
   filterHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
-    backgroundColor: 'white',
+    padding: Theme.spacing.lg,
+    backgroundColor: Theme.colors.backgroundSecondary,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: Theme.colors.border,
   },
   filterTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1F2937',
-    fontFamily: 'Inter-Bold',
+    fontSize: Theme.typography.fontSize.lg,
+    color: Theme.colors.textPrimary,
+    fontFamily: Theme.typography.fontFamily.bold,
   },
   clearFilters: {
-    color: '#2563EB',
-    fontSize: 16,
-    fontWeight: '600',
-    fontFamily: 'Inter-SemiBold',
+    color: Theme.colors.primary,
+    fontSize: Theme.typography.fontSize.base,
+    fontFamily: Theme.typography.fontFamily.semiBold,
   },
   filterContent: {
     flex: 1,
-    padding: 20,
+    padding: Theme.spacing.lg,
   },
   filterSection: {
-    marginBottom: 30,
+    marginBottom: Theme.spacing['2xl'],
   },
   filterSectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 12,
-    fontFamily: 'Inter-SemiBold',
+    fontSize: Theme.typography.fontSize.base,
+    color: Theme.colors.textSecondary,
+    marginBottom: Theme.spacing.md,
+    fontFamily: Theme.typography.fontFamily.semiBold,
   },
   filterOptions: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: Theme.spacing.sm,
   },
   filterOption: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: 'white',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    paddingHorizontal: Theme.spacing.md,
+    paddingVertical: Theme.spacing.sm,
+    borderRadius: Theme.borderRadius.full,
+    ...Theme.cards.card,
   },
   filterOptionActive: {
-    backgroundColor: '#2563EB',
-    borderColor: '#2563EB',
+    backgroundColor: Theme.colors.primary,
+    borderColor: Theme.colors.primary,
   },
   filterOptionText: {
-    fontSize: 14,
-    color: '#6B7280',
-    fontFamily: 'Inter-Regular',
+    fontSize: Theme.typography.fontSize.sm,
+    color: Theme.colors.textTertiary,
+    fontFamily: Theme.typography.fontFamily.regular,
   },
   filterOptionTextActive: {
-    color: 'white',
-    fontFamily: 'Inter-Medium',
+    color: Theme.colors.textPrimary,
+    fontFamily: Theme.typography.fontFamily.medium,
   },
 });

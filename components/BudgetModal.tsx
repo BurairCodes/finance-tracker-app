@@ -15,11 +15,17 @@ import { X } from 'lucide-react-native';
 import { EXPENSE_CATEGORIES, CURRENCIES } from '@/constants/Categories';
 import CurrencyPicker from './CurrencyPicker';
 import { ValidationUtils } from '@/utils/validation';
+import Theme from '@/constants/Theme';
 
 interface BudgetModalProps {
   visible: boolean;
   onClose: () => void;
-  onSave: (budget: any) => Promise<void>;
+  onSave: (budget: {
+    category: string;
+    amount: number;
+    currency: string;
+    period: 'monthly' | 'weekly' | 'yearly';
+  }) => Promise<void>;
   existingCategories: string[];
 }
 
@@ -103,13 +109,17 @@ export default function BudgetModal({ visible, onClose, onSave, existingCategori
                 selectedValue={formData.category}
                 onValueChange={(value) => setFormData(prev => ({ ...prev, category: value }))}
                 style={styles.picker}
+                dropdownIconColor="#FFFFFF"
+                mode="dropdown"
+                itemStyle={{ color: '#FFFFFF', backgroundColor: '#1A1A2E' }}
               >
-                <Picker.Item label="Select a category" value="" />
+                <Picker.Item label="Select a category" value="" color="#000000" />
                 {EXPENSE_CATEGORIES.map(category => (
                   <Picker.Item
                     key={category}
                     label={category}
                     value={category}
+                    color="#000000"
                   />
                 ))}
               </Picker>
@@ -127,6 +137,7 @@ export default function BudgetModal({ visible, onClose, onSave, existingCategori
               <TextInput
                 style={styles.amountInput}
                 placeholder="0.00"
+                placeholderTextColor={Theme.colors.textTertiary}
                 value={formData.amount}
                 onChangeText={(text) => setFormData(prev => ({ ...prev, amount: text }))}
                 keyboardType="numeric"
@@ -141,10 +152,13 @@ export default function BudgetModal({ visible, onClose, onSave, existingCategori
                 selectedValue={formData.period}
                 onValueChange={(value) => setFormData(prev => ({ ...prev, period: value }))}
                 style={styles.picker}
+                dropdownIconColor="#FFFFFF"
+                mode="dropdown"
+                itemStyle={{ color: '#FFFFFF', backgroundColor: '#1A1A2E' }}
               >
-                <Picker.Item label="Monthly" value="monthly" />
-                <Picker.Item label="Weekly" value="weekly" />
-                <Picker.Item label="Yearly" value="yearly" />
+                <Picker.Item label="Monthly" value="monthly" color="#000000" />
+                <Picker.Item label="Weekly" value="weekly" color="#000000" />
+                <Picker.Item label="Yearly" value="yearly" color="#000000" />
               </Picker>
             </View>
           </View>
@@ -157,74 +171,89 @@ export default function BudgetModal({ visible, onClose, onSave, existingCategori
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: Theme.colors.background,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
-    backgroundColor: 'white',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: Theme.colors.backgroundSecondary,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: Theme.colors.border,
+    minHeight: 60, // Better touch target for header buttons
   },
   title: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1F2937',
-    fontFamily: 'Inter-Bold',
+    fontSize: 20,
+    color: Theme.colors.textPrimary,
+    fontFamily: Theme.typography.fontFamily.bold,
   },
   saveButton: {
-    color: '#2563EB',
-    fontSize: 16,
-    fontWeight: '600',
-    fontFamily: 'Inter-SemiBold',
+    color: Theme.colors.primary,
+    fontSize: 18,
+    fontFamily: Theme.typography.fontFamily.semiBold,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
   },
   saveButtonDisabled: {
     opacity: 0.5,
   },
   content: {
     flex: 1,
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
   },
   formGroup: {
-    marginBottom: 20,
+    marginBottom: 24,
   },
   label: {
     fontSize: 16,
+    color: Theme.colors.textSecondary,
+    marginBottom: 12,
+    fontFamily: Theme.typography.fontFamily.semiBold,
     fontWeight: '600',
-    color: '#374151',
-    marginBottom: 8,
-    fontFamily: 'Inter-SemiBold',
   },
   amountContainer: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 16,
   },
   currencyPicker: {
-    backgroundColor: 'white',
-    borderRadius: 12,
+    backgroundColor: '#1A1A2E',
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    width: 100,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    width: 120, // Slightly wider for better mobile UX
+    overflow: 'hidden',
   },
   amountInput: {
     flex: 1,
-    backgroundColor: 'white',
-    borderRadius: 12,
+    backgroundColor: '#1A1A2E',
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: 'rgba(255, 255, 255, 0.2)',
     padding: 16,
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
+    fontSize: 18, // Larger for better mobile input
+    fontFamily: Theme.typography.fontFamily.regular,
+    color: '#FFFFFF',
+    minHeight: 56, // Better touch target
   },
   pickerContainer: {
-    backgroundColor: 'white',
-    borderRadius: 12,
+    backgroundColor: '#1A1A2E',
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    overflow: 'hidden',
+    minHeight: 56, // Better touch target
   },
   picker: {
-    height: 50,
+    height: 56,
+    color: '#FFFFFF',
+    backgroundColor: 'transparent',
+    marginTop: -8,
+    marginBottom: -8,
+    textAlign: 'center',
+    fontSize: 16, // Better readability on mobile
   },
 });

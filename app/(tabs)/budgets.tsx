@@ -19,6 +19,8 @@ import { ExchangeRateService } from '@/services/exchangeRateService';
 import { NotificationService } from '@/services/notificationService';
 import AuthScreen from '@/components/AuthScreen';
 import BudgetModal from '@/components/BudgetModal';
+import Theme from '@/constants/Theme';
+import { Database } from '@/types/database';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -73,7 +75,12 @@ export default function BudgetsScreen() {
     setBudgetSpending(spending);
   };
 
-  const handleAddBudget = async (budgetData: any) => {
+  const handleAddBudget = async (budgetData: {
+    category: string;
+    amount: number;
+    currency: string;
+    period: 'monthly' | 'weekly' | 'yearly';
+  }) => {
     const { error } = await addBudget(budgetData);
 
     if (error) {
@@ -96,7 +103,7 @@ export default function BudgetsScreen() {
     );
   };
 
-  const getBudgetStatus = (budget: any, spent: number) => {
+  const getBudgetStatus = (budget: Database['public']['Tables']['budgets']['Row'], spent: number) => {
     const percentage = (spent / budget.amount) * 100;
     
     if (percentage >= 100) return { status: 'exceeded', color: '#DC2626', icon: AlertTriangle };
@@ -199,95 +206,85 @@ export default function BudgetsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: Theme.colors.background,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
-    backgroundColor: 'white',
+    padding: Theme.spacing.lg,
+    backgroundColor: Theme.colors.backgroundSecondary,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: Theme.colors.border,
   },
   title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1F2937',
-    fontFamily: 'Inter-Bold',
+    fontSize: Theme.typography.fontSize['2xl'],
+    color: Theme.colors.textPrimary,
+    fontFamily: Theme.typography.fontFamily.bold,
   },
   addButton: {
-    backgroundColor: '#2563EB',
+    backgroundColor: Theme.colors.primary,
     width: 40,
     height: 40,
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
+    ...Theme.shadows.md,
   },
   budgetsList: {
     flex: 1,
-    padding: 20,
+    padding: Theme.spacing.lg,
     paddingBottom: Platform.OS === 'ios' ? 95 : 70,
   },
   loadingText: {
     textAlign: 'center',
-    color: '#6B7280',
-    padding: 20,
-    fontFamily: 'Inter-Regular',
+    color: Theme.colors.textTertiary,
+    padding: Theme.spacing.lg,
+    fontFamily: Theme.typography.fontFamily.regular,
   },
   emptyState: {
     alignItems: 'center',
-    padding: 40,
+    padding: Theme.spacing['2xl'],
   },
   emptyText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#374151',
-    marginTop: 16,
-    marginBottom: 8,
-    fontFamily: 'Inter-SemiBold',
+    fontSize: Theme.typography.fontSize.lg,
+    color: Theme.colors.textSecondary,
+    marginTop: Theme.spacing.md,
+    marginBottom: Theme.spacing.sm,
+    fontFamily: Theme.typography.fontFamily.semiBold,
   },
   emptySubtext: {
-    fontSize: 14,
-    color: '#6B7280',
+    fontSize: Theme.typography.fontSize.sm,
+    color: Theme.colors.textTertiary,
     textAlign: 'center',
-    fontFamily: 'Inter-Regular',
+    fontFamily: Theme.typography.fontFamily.regular,
   },
   budgetCard: {
-    backgroundColor: 'white',
-    padding: 20,
-    borderRadius: 16,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 3,
+    padding: Theme.spacing.lg,
+    borderRadius: Theme.borderRadius.lg,
+    marginBottom: Theme.spacing.md,
+    ...Theme.cards.card,
   },
   budgetHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: Theme.spacing.md,
   },
   budgetInfo: {
     flex: 1,
   },
   budgetCategory: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1F2937',
-    marginBottom: 2,
-    fontFamily: 'Inter-Bold',
+    fontSize: Theme.typography.fontSize.lg,
+    color: Theme.colors.textPrimary,
+    marginBottom: Theme.spacing.xs,
+    fontFamily: Theme.typography.fontFamily.bold,
   },
   budgetPeriod: {
-    fontSize: 14,
-    color: '#6B7280',
+    fontSize: Theme.typography.fontSize.sm,
+    color: Theme.colors.textTertiary,
     textTransform: 'capitalize',
-    fontFamily: 'Inter-Regular',
+    fontFamily: Theme.typography.fontFamily.regular,
   },
   statusIcon: {
     width: 40,
@@ -299,47 +296,45 @@ const styles = StyleSheet.create({
   budgetProgress: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: Theme.spacing.md,
   },
   progressBar: {
     flex: 1,
     height: 8,
-    backgroundColor: '#E5E7EB',
-    borderRadius: 4,
-    marginRight: 12,
+    backgroundColor: Theme.colors.surface,
+    borderRadius: Theme.borderRadius.sm,
+    marginRight: Theme.spacing.md,
     overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
-    borderRadius: 4,
+    borderRadius: Theme.borderRadius.sm,
   },
   progressText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
+    fontSize: Theme.typography.fontSize.sm,
+    color: Theme.colors.textSecondary,
     minWidth: 45,
-    fontFamily: 'Inter-SemiBold',
+    fontFamily: Theme.typography.fontFamily.semiBold,
   },
   budgetAmounts: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    marginBottom: Theme.spacing.sm,
   },
   spentAmount: {
-    fontSize: 14,
-    color: '#6B7280',
-    fontFamily: 'Inter-Regular',
+    fontSize: Theme.typography.fontSize.sm,
+    color: Theme.colors.textTertiary,
+    fontFamily: Theme.typography.fontFamily.regular,
   },
   budgetAmount: {
-    fontSize: 14,
-    color: '#6B7280',
-    fontFamily: 'Inter-Regular',
+    fontSize: Theme.typography.fontSize.sm,
+    color: Theme.colors.textTertiary,
+    fontFamily: Theme.typography.fontFamily.regular,
   },
   remainingAmount: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#059669',
+    fontSize: Theme.typography.fontSize.base,
+    color: Theme.colors.success,
     textAlign: 'center',
-    fontFamily: 'Inter-SemiBold',
+    fontFamily: Theme.typography.fontFamily.semiBold,
   },
 });

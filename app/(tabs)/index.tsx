@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,11 +8,13 @@ import {
   RefreshControl,
   Platform,
   Dimensions,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { TrendingUp, TrendingDown, DollarSign, Plus, CircleAlert as AlertCircle, Camera } from 'lucide-react-native';
 import { useAuth } from '@/hooks/useAuth';
+import { useProfile } from '@/hooks/useProfile';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useBudgets } from '@/hooks/useBudgets';
 import { ExchangeRateService } from '@/services/exchangeRateService';
@@ -21,13 +23,17 @@ import LoadingScreen from '@/components/LoadingScreen';
 import ReceiptScanner from '@/components/ReceiptScanner';
 import { router } from 'expo-router';
 import { responsiveStyles } from '@/utils/responsiveStyles';
+import Theme from '@/constants/Theme';
 
 export default function DashboardScreen() {
   const { user, loading: authLoading } = useAuth();
+  const { profile } = useProfile(user?.id);
   const { transactions, loading: transactionsLoading, refetch } = useTransactions(user?.id);
   const { budgets } = useBudgets(user?.id);
   const [refreshing, setRefreshing] = useState(false);
   const [showReceiptScanner, setShowReceiptScanner] = useState(false);
+  const [fabExpanded, setFabExpanded] = useState(false);
+  const fabAnimation = useRef(new Animated.Value(0)).current;
   const [monthlyStats, setMonthlyStats] = useState({
     income: 0,
     expenses: 0,
@@ -79,6 +85,26 @@ export default function DashboardScreen() {
     setRefreshing(false);
   };
 
+  const toggleFab = () => {
+    if (fabExpanded) {
+      // Currently expanded, so collapse
+      setFabExpanded(false);
+      Animated.timing(fabAnimation, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: false,
+      }).start();
+          } else {
+        // Currently collapsed, so expand
+        setFabExpanded(true);
+        Animated.timing(fabAnimation, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: false,
+        }).start();
+      }
+  };
+
   const getBudgetAlerts = () => {
     const currentMonth = new Date().getMonth();
     const currentYear = new Date().getFullYear();
@@ -120,7 +146,7 @@ export default function DashboardScreen() {
       >
         <View style={styles.header}>
           <Text style={styles.greeting}>Good morning</Text>
-          <Text style={styles.userName}>{user.user_metadata?.full_name || 'User'}</Text>
+                          <Text style={styles.userName}>{profile?.full_name || user.user_metadata?.full_name || 'User'}</Text>
         </View>
 
         {budgetAlerts.length > 0 && (
@@ -133,7 +159,7 @@ export default function DashboardScreen() {
         )}
 
         <LinearGradient
-          colors={['#2563EB', '#1D4ED8']}
+          colors={Theme.colors.gradientPrimary}
           style={styles.balanceCard}
         >
           <Text style={styles.balanceLabel}>Current Balance</Text>
@@ -210,20 +236,86 @@ export default function DashboardScreen() {
         </View>
       </ScrollView>
 
-      {/* Action Buttons */}
-      <View style={styles.actionButtons}>
-        <TouchableOpacity 
-          style={styles.fab}
-          onPress={() => router.push('/(tabs)/transactions')}
+      {/* Expandable FAB */}
+      <View style={styles.fabContainer}>
+
+
+        {/* Add Transaction Button */}
+        <Animated.View
+          style={[
+            styles.expandableFab,
+            styles.addFab,
+            {
+              transform: [{
+                translateY: fabAnimation.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0, -70],
+                }),
+              }],
+              opacity: fabAnimation,
+            },
+          ]}
         >
-          <Plus size={24} color="white" />
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={styles.receiptFab}
-          onPress={() => setShowReceiptScanner(true)}
+          <TouchableOpacity
+            style={styles.expandableFabButton}
+            onPress={() => {
+              router.push('/(tabs)/transactions');
+              toggleFab();
+            }}
+            activeOpacity={0.7}
+          >
+            <Plus size={20} color="white" />
+          </TouchableOpacity>
+        </Animated.View>
+
+        {/* Camera Button */}
+        <Animated.View
+          style={[
+            styles.expandableFab,
+            styles.cameraFab,
+            {
+              transform: [{
+                translateY: fabAnimation.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0, -140],
+                }),
+              }],
+              opacity: fabAnimation,
+            },
+          ]}
         >
-          <Camera size={24} color="white" />
+          <TouchableOpacity
+            style={styles.expandableFabButton}
+            onPress={() => {
+              setShowReceiptScanner(true);
+              toggleFab();
+            }}
+            activeOpacity={0.7}
+          >
+            <Camera size={20} color="white" />
+          </TouchableOpacity>
+        </Animated.View>
+
+        {/* Main FAB */}
+        <TouchableOpacity
+          style={styles.mainFab}
+                  onPress={() => {
+          toggleFab();
+        }}
+          activeOpacity={0.8}
+        >
+          <Animated.View
+            style={{
+              transform: [{
+                rotate: fabAnimation.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: ['0deg', '45deg'],
+                }),
+              }],
+            }}
+          >
+            <Plus size={24} color="white" />
+          </Animated.View>
         </TouchableOpacity>
       </View>
 
@@ -239,204 +331,208 @@ export default function DashboardScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: Theme.colors.background,
   },
   scrollView: {
     flex: 1,
     paddingBottom: Platform.OS === 'ios' ? 20 : 16,
   },
   header: {
-    padding: 20,
-    paddingBottom: 10,
+    padding: Theme.spacing.lg,
+    paddingBottom: Theme.spacing.sm,
   },
   greeting: {
-    fontSize: 16,
-    color: '#6B7280',
-    fontFamily: 'Inter-Regular',
+    fontSize: Theme.typography.fontSize.base,
+    color: Theme.colors.textTertiary,
+    fontFamily: Theme.typography.fontFamily.regular,
   },
   userName: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1F2937',
-    fontFamily: 'Inter-Bold',
+    fontSize: Theme.typography.fontSize['2xl'],
+    color: Theme.colors.textPrimary,
+    fontFamily: Theme.typography.fontFamily.bold,
   },
   alertCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FEE2E2',
-    margin: 20,
-    marginTop: 10,
-    padding: 16,
-    borderRadius: 12,
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    margin: Theme.spacing.lg,
+    marginTop: Theme.spacing.sm,
+    padding: Theme.spacing.md,
+    borderRadius: Theme.borderRadius.md,
     borderLeftWidth: 4,
-    borderLeftColor: '#DC2626',
+    borderLeftColor: Theme.colors.error,
+    borderWidth: 1,
+    borderColor: Theme.colors.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   alertText: {
-    marginLeft: 8,
-    color: '#DC2626',
-    fontWeight: '500',
-    fontFamily: 'Inter-Medium',
+    marginLeft: Theme.spacing.sm,
+    color: Theme.colors.errorLight,
+    fontFamily: Theme.typography.fontFamily.medium,
   },
   balanceCard: {
-    margin: 20,
-    padding: 24,
-    borderRadius: 16,
+    margin: Theme.spacing.lg,
+    padding: Theme.spacing['2xl'],
+    borderRadius: Theme.borderRadius.lg,
     alignItems: 'center',
+    ...Theme.cards.primary,
   },
   balanceLabel: {
     color: 'rgba(255, 255, 255, 0.8)',
-    fontSize: 16,
-    marginBottom: 8,
-    fontFamily: 'Inter-Regular',
+    fontSize: Theme.typography.fontSize.base,
+    marginBottom: Theme.spacing.sm,
+    fontFamily: Theme.typography.fontFamily.regular,
   },
   balanceAmount: {
-    color: 'white',
-    fontSize: 36,
-    fontWeight: 'bold',
-    marginBottom: 4,
-    fontFamily: 'Inter-Bold',
+    color: Theme.colors.textPrimary,
+    fontSize: 32, // Reduced from 4xl to fit better
+    marginBottom: Theme.spacing.xs,
+    fontFamily: Theme.typography.fontFamily.bold,
+    textAlign: 'center',
   },
   balanceSubtext: {
     color: 'rgba(255, 255, 255, 0.7)',
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
+    fontSize: Theme.typography.fontSize.sm,
+    fontFamily: Theme.typography.fontFamily.regular,
   },
   statsContainer: {
     flexDirection: 'row',
-    paddingHorizontal: 20,
-    gap: 12,
+    paddingHorizontal: Theme.spacing.lg,
+    gap: Theme.spacing.md,
   },
   statCard: {
     flex: 1,
-    backgroundColor: 'white',
-    padding: 20,
-    borderRadius: 16,
+    padding: Theme.spacing.lg,
+    borderRadius: Theme.borderRadius.lg,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    ...Theme.cards.card,
   },
   statIcon: {
-    marginBottom: 8,
+    marginBottom: Theme.spacing.sm,
   },
   statLabel: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginBottom: 4,
-    fontFamily: 'Inter-Regular',
+    fontSize: Theme.typography.fontSize.sm,
+    color: Theme.colors.textTertiary,
+    marginBottom: Theme.spacing.xs,
+    fontFamily: Theme.typography.fontFamily.regular,
   },
   statAmount: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1F2937',
-    fontFamily: 'Inter-Bold',
+    fontSize: Theme.typography.fontSize.lg,
+    color: Theme.colors.textPrimary,
+    fontFamily: Theme.typography.fontFamily.bold,
   },
   recentSection: {
-    padding: 20,
+    padding: Theme.spacing.lg,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1F2937',
-    marginBottom: 16,
-    fontFamily: 'Inter-Bold',
+    fontSize: Theme.typography.fontSize.xl,
+    color: Theme.colors.textPrimary,
+    marginBottom: Theme.spacing.md,
+    fontFamily: Theme.typography.fontFamily.bold,
   },
   loadingText: {
     textAlign: 'center',
-    color: '#6B7280',
-    padding: 20,
-    fontFamily: 'Inter-Regular',
+    color: Theme.colors.textTertiary,
+    padding: Theme.spacing.lg,
+    fontFamily: Theme.typography.fontFamily.regular,
   },
   emptyState: {
     alignItems: 'center',
-    padding: 20,
+    padding: Theme.spacing.lg,
   },
   emptyText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#374151',
-    marginTop: 16,
-    fontFamily: 'Inter-SemiBold',
+    fontSize: Theme.typography.fontSize.lg,
+    color: Theme.colors.textSecondary,
+    marginTop: Theme.spacing.md,
+    fontFamily: Theme.typography.fontFamily.semiBold,
   },
   emptySubtext: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginTop: 4,
+    fontSize: Theme.typography.fontSize.sm,
+    color: Theme.colors.textTertiary,
+    marginTop: Theme.spacing.xs,
     textAlign: 'center',
-    fontFamily: 'Inter-Regular',
+    fontFamily: Theme.typography.fontFamily.regular,
   },
   transactionsList: {
-    gap: 12,
+    gap: Theme.spacing.md,
   },
   transactionItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: 'white',
-    padding: 16,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    padding: Theme.spacing.md,
+    borderRadius: Theme.borderRadius.md,
+    ...Theme.cards.card,
   },
   transactionInfo: {
     flex: 1,
   },
   transactionCategory: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: 2,
-    fontFamily: 'Inter-SemiBold',
+    fontSize: Theme.typography.fontSize.base,
+    color: Theme.colors.textPrimary,
+    marginBottom: Theme.spacing.xs,
+    fontFamily: Theme.typography.fontFamily.semiBold,
   },
   transactionDescription: {
-    fontSize: 14,
-    color: '#6B7280',
-    fontFamily: 'Inter-Regular',
+    fontSize: Theme.typography.fontSize.sm,
+    color: Theme.colors.textTertiary,
+    fontFamily: Theme.typography.fontFamily.regular,
   },
   transactionAmount: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    fontFamily: 'Inter-Bold',
+    fontSize: Theme.typography.fontSize.base,
+    fontFamily: Theme.typography.fontFamily.bold,
   },
   incomeAmount: {
-    color: '#059669',
+    color: Theme.colors.success,
   },
   expenseAmount: {
-    color: '#DC2626',
+    color: Theme.colors.error,
   },
-  fab: responsiveStyles.fab,
-  actionButtons: {
+  fabContainer: {
     position: 'absolute',
     bottom: Platform.OS === 'ios' ? 100 : 80,
     right: 20,
-    flexDirection: 'column',
-    gap: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  receiptFab: {
+  mainFab: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#059669',
+    backgroundColor: Theme.colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+    ...Theme.shadows.glass,
+    zIndex: 1000,
   },
+
+  expandableFab: {
+    position: 'absolute',
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...Theme.shadows.glass,
+    zIndex: 999,
+    bottom: 0,
+  },
+  expandableFabButton: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cameraFab: {
+    backgroundColor: Theme.colors.success,
+  },
+  addFab: {
+    backgroundColor: Theme.colors.info,
+  },
+
 });

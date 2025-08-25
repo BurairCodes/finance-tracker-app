@@ -29,6 +29,7 @@ import { useTransactions } from '@/hooks/useTransactions';
 import { useBudgets } from '@/hooks/useBudgets';
 import { AIService } from '@/services/aiService';
 import { ExchangeRateService } from '@/services/exchangeRateService';
+import Theme from '@/constants/Theme';
 
 interface Message {
   id: string;
@@ -43,7 +44,7 @@ interface FinancialInsight {
   title: string;
   description: string;
   type: 'positive' | 'warning' | 'tip';
-  icon: React.ComponentType<any>;
+  icon: React.ComponentType<{ size?: number; color?: string }>;
   action?: string;
 }
 
@@ -212,13 +213,13 @@ export default function FinanceCoach() {
   const getMessageIcon = (message: Message) => {
     switch (message.type) {
       case 'advice':
-        return <Lightbulb size={16} color="#2563EB" />;
+        return <Lightbulb size={16} color={Theme.colors.info} />;
       case 'warning':
-        return <AlertTriangle size={16} color="#DC2626" />;
+        return <AlertTriangle size={16} color={Theme.colors.error} />;
       case 'tip':
-        return <Target size={16} color="#059669" />;
+        return <Target size={16} color={Theme.colors.success} />;
       default:
-        return <MessageCircle size={16} color="#6B7280" />;
+        return <MessageCircle size={16} color={Theme.colors.textTertiary} />;
     }
   };
 
@@ -240,15 +241,15 @@ export default function FinanceCoach() {
                 style={[styles.insightCard, styles[`${insight.type}Card`]]}
                 onPress={() => insight.action && handleInsightAction(insight.action)}
               >
-                <View style={styles.insightHeader}>
-                  <insight.icon size={20} color={insight.type === 'warning' ? '#DC2626' : '#059669'} />
-                  <Text style={styles.insightTitle}>{insight.title}</Text>
-                </View>
+                                 <View style={styles.insightHeader}>
+                   <insight.icon size={20} color={insight.type === 'warning' ? Theme.colors.error : Theme.colors.success} />
+                   <Text style={styles.insightTitle}>{insight.title}</Text>
+                 </View>
                 <Text style={styles.insightDescription}>{insight.description}</Text>
                 {insight.action && (
                   <View style={styles.insightAction}>
                     <Text style={styles.actionText}>{insight.action}</Text>
-                    <ChevronRight size={16} color="#2563EB" />
+                                         <ChevronRight size={16} color={Theme.colors.primary} />
                   </View>
                 )}
               </TouchableOpacity>
@@ -273,17 +274,26 @@ export default function FinanceCoach() {
                   {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </Text>
               </View>
-              <View style={[styles.messageBubble, getMessageStyle(message)]}>
-                <Text style={styles.messageText}>{message.text}</Text>
-              </View>
+                             <View style={[styles.messageBubble, getMessageStyle(message)]}>
+                 <Text style={[
+                   styles.messageText,
+                   message.isUser ? styles.userMessageText : 
+                   message.type === 'advice' ? styles.adviceMessageText :
+                   message.type === 'warning' ? styles.warningMessageText :
+                   message.type === 'tip' ? styles.tipMessageText :
+                   styles.aiMessageText
+                 ]}>
+                   {message.text}
+                 </Text>
+               </View>
             </View>
           ))}
-          {isLoading && (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="small" color="#2563EB" />
-              <Text style={styles.loadingText}>Coach is thinking...</Text>
-            </View>
-          )}
+                     {isLoading && (
+             <View style={styles.loadingContainer}>
+               <ActivityIndicator size="small" color={Theme.colors.primary} />
+               <Text style={styles.loadingText}>Coach is thinking...</Text>
+             </View>
+           )}
         </View>
       </ScrollView>
 
@@ -294,6 +304,7 @@ export default function FinanceCoach() {
           value={inputText}
           onChangeText={setInputText}
           placeholder="Ask your finance coach anything..."
+          placeholderTextColor={Theme.colors.textTertiary}
           multiline
           maxLength={500}
         />
@@ -312,104 +323,92 @@ export default function FinanceCoach() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: Theme.colors.background,
   },
   header: {
-    padding: 20,
-    backgroundColor: 'white',
+    padding: Theme.spacing.lg,
+    backgroundColor: Theme.colors.backgroundSecondary,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: Theme.colors.border,
   },
   title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1F2937',
-    fontFamily: 'Inter-Bold',
+    fontSize: Theme.typography.fontSize['2xl'],
+    color: Theme.colors.textPrimary,
+    fontFamily: Theme.typography.fontFamily.bold,
   },
   subtitle: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginTop: 4,
-    fontFamily: 'Inter-Regular',
+    fontSize: Theme.typography.fontSize.sm,
+    color: Theme.colors.textTertiary,
+    marginTop: Theme.spacing.xs,
+    fontFamily: Theme.typography.fontFamily.regular,
   },
   content: {
     flex: 1,
-    padding: 20,
+    padding: Theme.spacing.lg,
   },
   insightsSection: {
-    marginBottom: 30,
+    marginBottom: Theme.spacing['2xl'],
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1F2937',
-    marginBottom: 16,
-    fontFamily: 'Inter-Bold',
+    fontSize: Theme.typography.fontSize.lg,
+    color: Theme.colors.textPrimary,
+    marginBottom: Theme.spacing.md,
+    fontFamily: Theme.typography.fontFamily.bold,
   },
   insightCard: {
-    backgroundColor: 'white',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    padding: Theme.spacing.md,
+    borderRadius: Theme.borderRadius.md,
+    marginBottom: Theme.spacing.md,
+    ...Theme.cards.card,
   },
   positiveCard: {
     borderLeftWidth: 4,
-    borderLeftColor: '#059669',
+    borderLeftColor: Theme.colors.success,
   },
   warningCard: {
     borderLeftWidth: 4,
-    borderLeftColor: '#DC2626',
+    borderLeftColor: Theme.colors.error,
   },
   tipCard: {
     borderLeftWidth: 4,
-    borderLeftColor: '#2563EB',
+    borderLeftColor: Theme.colors.primary,
   },
   insightHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: Theme.spacing.sm,
   },
   insightTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1F2937',
-    marginLeft: 8,
-    fontFamily: 'Inter-SemiBold',
+    fontSize: Theme.typography.fontSize.base,
+    color: Theme.colors.textPrimary,
+    marginLeft: Theme.spacing.sm,
+    fontFamily: Theme.typography.fontFamily.semiBold,
   },
   insightDescription: {
-    fontSize: 14,
-    color: '#6B7280',
+    fontSize: Theme.typography.fontSize.sm,
+    color: Theme.colors.textTertiary,
     lineHeight: 20,
-    fontFamily: 'Inter-Regular',
+    fontFamily: Theme.typography.fontFamily.regular,
   },
   insightAction: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 12,
-    paddingTop: 12,
+    marginTop: Theme.spacing.md,
+    paddingTop: Theme.spacing.md,
     borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
+    borderTopColor: Theme.colors.border,
   },
   actionText: {
-    fontSize: 14,
-    color: '#2563EB',
-    fontWeight: '500',
-    fontFamily: 'Inter-Medium',
+    fontSize: Theme.typography.fontSize.sm,
+    color: Theme.colors.primary,
+    fontFamily: Theme.typography.fontFamily.medium,
   },
   chatSection: {
     flex: 1,
   },
   messageContainer: {
-    marginBottom: 16,
+    marginBottom: Theme.spacing.md,
   },
   userMessageContainer: {
     alignItems: 'flex-end',
@@ -420,102 +419,111 @@ const styles = StyleSheet.create({
   messageHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: Theme.spacing.xs,
   },
   messageTime: {
-    fontSize: 12,
-    color: '#9CA3AF',
-    marginLeft: 8,
-    fontFamily: 'Inter-Regular',
+    fontSize: Theme.typography.fontSize.xs,
+    color: Theme.colors.textTertiary,
+    marginLeft: Theme.spacing.sm,
+    fontFamily: Theme.typography.fontFamily.regular,
   },
   messageBubble: {
     maxWidth: '80%',
-    padding: 12,
-    borderRadius: 16,
+    padding: Theme.spacing.md,
+    borderRadius: Theme.borderRadius.lg,
   },
   userMessage: {
-    backgroundColor: '#2563EB',
+    backgroundColor: Theme.colors.primary,
   },
   aiMessage: {
-    backgroundColor: 'white',
+    backgroundColor: '#1A1A2E',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   adviceMessage: {
-    backgroundColor: '#EFF6FF',
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
     borderWidth: 1,
-    borderColor: '#DBEAFE',
+    borderColor: 'rgba(59, 130, 246, 0.2)',
   },
   warningMessage: {
-    backgroundColor: '#FEF2F2',
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
     borderWidth: 1,
-    borderColor: '#FECACA',
+    borderColor: 'rgba(239, 68, 68, 0.2)',
   },
   tipMessage: {
-    backgroundColor: '#F0FDF4',
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
     borderWidth: 1,
-    borderColor: '#BBF7D0',
+    borderColor: 'rgba(16, 185, 129, 0.2)',
   },
   messageText: {
-    fontSize: 14,
+    fontSize: Theme.typography.fontSize.sm,
     lineHeight: 20,
-    fontFamily: 'Inter-Regular',
+    fontFamily: Theme.typography.fontFamily.regular,
   },
-  userMessage: {
-    color: 'white',
+  userMessageText: {
+    color: Theme.colors.textPrimary,
   },
-  aiMessage: {
-    color: '#1F2937',
+  aiMessageText: {
+    color: Theme.colors.textPrimary,
   },
-  adviceMessage: {
-    color: '#1E40AF',
+  adviceMessageText: {
+    color: Theme.colors.info,
   },
-  warningMessage: {
-    color: '#991B1B',
+  warningMessageText: {
+    color: Theme.colors.error,
   },
-  tipMessage: {
-    color: '#166534',
+  tipMessageText: {
+    color: Theme.colors.success,
   },
   loadingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 16,
+    padding: Theme.spacing.md,
   },
   loadingText: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginLeft: 8,
-    fontFamily: 'Inter-Regular',
+    fontSize: Theme.typography.fontSize.sm,
+    color: Theme.colors.textTertiary,
+    marginLeft: Theme.spacing.sm,
+    fontFamily: Theme.typography.fontFamily.regular,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    padding: 20,
-    backgroundColor: 'white',
+    padding: Theme.spacing.lg,
+    backgroundColor: Theme.colors.backgroundSecondary,
     borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
+    borderTopColor: Theme.colors.border,
   },
   textInput: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#1A1A2E',
     borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    marginRight: 12,
+    paddingHorizontal: Theme.spacing.md,
+    paddingVertical: Theme.spacing.md,
+    marginRight: Theme.spacing.md,
     maxHeight: 100,
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
+    fontSize: Theme.typography.fontSize.sm,
+    fontFamily: Theme.typography.fontFamily.regular,
+    color: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
   },
   sendButton: {
-    backgroundColor: '#2563EB',
+    backgroundColor: Theme.colors.primary,
     width: 40,
     height: 40,
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
+    ...Theme.shadows.md,
   },
   sendButtonDisabled: {
-    backgroundColor: '#D1D5DB',
+    backgroundColor: Theme.colors.textTertiary,
   },
 });

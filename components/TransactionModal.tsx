@@ -16,11 +16,19 @@ import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, CURRENCIES } from '@/constants/C
 import CurrencyPicker from './CurrencyPicker';
 import { ValidationUtils } from '@/utils/validation';
 import { AIService } from '@/services/aiService';
+import Theme from '@/constants/Theme';
 
 interface TransactionModalProps {
   visible: boolean;
   onClose: () => void;
-  onSave: (transaction: any) => Promise<void>;
+  onSave: (transaction: {
+    amount: number;
+    currency: string;
+    category: string;
+    type: 'income' | 'expense';
+    description: string;
+    date: string;
+  }) => Promise<void>;
   initialData?: {
     amount?: string;
     description?: string;
@@ -182,13 +190,14 @@ export default function TransactionModal({ visible, onClose, onSave, initialData
                 onCurrencyChange={(value) => setFormData(prev => ({ ...prev, currency: value }))}
                 style={styles.currencyPicker}
               />
-              <TextInput
-                style={styles.amountInput}
-                placeholder="0.00"
-                value={formData.amount}
-                onChangeText={(text) => setFormData(prev => ({ ...prev, amount: text }))}
-                keyboardType="numeric"
-              />
+                          <TextInput
+              style={styles.amountInput}
+              placeholder="0.00"
+              placeholderTextColor={Theme.colors.textTertiary}
+              value={formData.amount}
+              onChangeText={(text) => setFormData(prev => ({ ...prev, amount: text }))}
+              keyboardType="numeric"
+            />
             </View>
           </View>
 
@@ -199,13 +208,17 @@ export default function TransactionModal({ visible, onClose, onSave, initialData
                 selectedValue={formData.category}
                 onValueChange={(value) => setFormData(prev => ({ ...prev, category: value }))}
                 style={styles.picker}
+                dropdownIconColor="#FFFFFF"
+                mode="dropdown"
+                itemStyle={{ color: '#FFFFFF', backgroundColor: '#1A1A2E' }}
               >
-                <Picker.Item label="Select a category (or leave empty for AI)" value="" />
+                <Picker.Item label="Select a category (or leave empty for AI)" value="" color="#000000" />
                 {categories.map(category => (
                   <Picker.Item
                     key={category}
                     label={category}
                     value={category}
+                    color="#000000"
                   />
                 ))}
               </Picker>
@@ -222,6 +235,7 @@ export default function TransactionModal({ visible, onClose, onSave, initialData
             <TextInput
               style={styles.textInput}
               placeholder="Enter description..."
+              placeholderTextColor={Theme.colors.textTertiary}
               value={formData.description}
               onChangeText={(text) => setFormData(prev => ({ ...prev, description: text }))}
               multiline
@@ -236,6 +250,7 @@ export default function TransactionModal({ visible, onClose, onSave, initialData
               value={formData.date}
               onChangeText={(text) => setFormData(prev => ({ ...prev, date: text }))}
               placeholder="YYYY-MM-DD"
+              placeholderTextColor={Theme.colors.textTertiary}
               maxLength={10}
             />
           </View>
@@ -248,125 +263,137 @@ export default function TransactionModal({ visible, onClose, onSave, initialData
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: Theme.colors.background,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
-    backgroundColor: 'white',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: Theme.colors.backgroundSecondary,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: Theme.colors.border,
+    minHeight: 60, // Better touch target for header buttons
   },
   title: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1F2937',
-    fontFamily: 'Inter-Bold',
+    fontSize: 20,
+    color: Theme.colors.textPrimary,
+    fontFamily: Theme.typography.fontFamily.bold,
   },
   saveButton: {
-    color: '#2563EB',
-    fontSize: 16,
-    fontWeight: '600',
-    fontFamily: 'Inter-SemiBold',
+    color: Theme.colors.primary,
+    fontSize: 18,
+    fontFamily: Theme.typography.fontFamily.semiBold,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
   },
   saveButtonDisabled: {
     opacity: 0.5,
   },
   content: {
     flex: 1,
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
   },
   typeSelector: {
     flexDirection: 'row',
-    backgroundColor: '#F3F4F6',
-    borderRadius: 12,
-    padding: 4,
-    marginBottom: 24,
+    backgroundColor: Theme.colors.surface,
+    borderRadius: 16,
+    padding: 6,
+    marginBottom: 32,
+    height: 56, // Better touch target
   },
   typeButton: {
     flex: 1,
     paddingVertical: 12,
     alignItems: 'center',
-    borderRadius: 8,
+    borderRadius: 12,
+    justifyContent: 'center',
   },
   typeButtonActive: {
-    backgroundColor: 'white',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    backgroundColor: Theme.colors.card,
+    ...Theme.shadows.sm,
   },
   typeButtonText: {
     fontSize: 16,
+    color: Theme.colors.textTertiary,
+    fontFamily: Theme.typography.fontFamily.medium,
     fontWeight: '500',
-    color: '#6B7280',
-    fontFamily: 'Inter-Medium',
   },
   typeButtonTextActive: {
-    color: '#1F2937',
-    fontFamily: 'Inter-Medium',
+    color: Theme.colors.textPrimary,
+    fontFamily: Theme.typography.fontFamily.medium,
   },
   formGroup: {
-    marginBottom: 20,
+    marginBottom: 24,
   },
   label: {
     fontSize: 16,
+    color: Theme.colors.textSecondary,
+    marginBottom: 12,
+    fontFamily: Theme.typography.fontFamily.semiBold,
     fontWeight: '600',
-    color: '#374151',
-    marginBottom: 8,
-    fontFamily: 'Inter-SemiBold',
   },
   amountContainer: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 16,
   },
   currencyPicker: {
-    backgroundColor: 'white',
-    borderRadius: 12,
+    borderRadius: 16,
+    width: 120, // Slightly wider for better mobile UX
+    backgroundColor: '#1A1A2E',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    width: 100,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    overflow: 'hidden',
   },
   amountInput: {
     flex: 1,
-    backgroundColor: 'white',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderRadius: 16,
     padding: 16,
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
+    fontSize: 18, // Larger for better mobile input
+    fontFamily: Theme.typography.fontFamily.regular,
+    color: '#FFFFFF',
+    backgroundColor: '#1A1A2E',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    minHeight: 56, // Better touch target
   },
   pickerContainer: {
-    backgroundColor: 'white',
-    borderRadius: 12,
+    borderRadius: 16,
+    backgroundColor: '#1A1A2E',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    overflow: 'hidden',
+    minHeight: 56, // Better touch target
   },
   picker: {
-    height: 50,
+    height: 56,
+    color: '#FFFFFF',
+    backgroundColor: 'transparent',
+    marginTop: -8,
+    marginBottom: -8,
+    textAlign: 'center',
+    fontSize: 16, // Better readability on mobile
   },
   textInput: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderRadius: 16,
     padding: 16,
     fontSize: 16,
     textAlignVertical: 'top',
-    fontFamily: 'Inter-Regular',
+    fontFamily: Theme.typography.fontFamily.regular,
+    color: '#FFFFFF',
+    backgroundColor: '#1A1A2E',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    minHeight: 80, // Better for multiline input
   },
   hintText: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginTop: 8,
-    fontFamily: 'Inter-Regular',
+    fontSize: Theme.typography.fontSize.sm,
+    color: Theme.colors.textTertiary,
+    marginTop: Theme.spacing.sm,
+    fontFamily: Theme.typography.fontFamily.regular,
     fontStyle: 'italic',
   },
 });

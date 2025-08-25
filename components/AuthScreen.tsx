@@ -13,6 +13,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { useAuth } from '@/hooks/useAuth';
 import { ValidationUtils } from '@/utils/validation';
+import Theme from '@/constants/Theme';
 
 export default function AuthScreen() {
   const [isLogin, setIsLogin] = useState(true);
@@ -72,11 +73,8 @@ export default function AuthScreen() {
       style={styles.container} 
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <LinearGradient
-        colors={['#2563EB', '#1D4ED8', '#1E40AF']}
-        style={styles.gradient}
-      >
-        <BlurView intensity={20} style={styles.blurContainer}>
+      <View style={styles.gradient}>
+        <View style={styles.blurContainer}>
           <View style={styles.formContainer}>
             <Text style={styles.title}>Smart Finance</Text>
             <Text style={styles.subtitle}>
@@ -97,6 +95,7 @@ export default function AuthScreen() {
             <TextInput
               style={styles.input}
               placeholder="Email"
+              placeholderTextColor={Theme.colors.textTertiary}
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
@@ -107,6 +106,7 @@ export default function AuthScreen() {
             <TextInput
               style={styles.input}
               placeholder="Password"
+              placeholderTextColor={Theme.colors.textTertiary}
               value={password}
               onChangeText={setPassword}
               secureTextEntry
@@ -135,8 +135,8 @@ export default function AuthScreen() {
               </Text>
             </TouchableOpacity>
           </View>
-        </BlurView>
-      </LinearGradient>
+        </View>
+      </View>
     </KeyboardAvoidingView>
   );
 }
@@ -147,72 +147,66 @@ const styles = StyleSheet.create({
   },
   gradient: {
     flex: 1,
+    backgroundColor: Theme.colors.background,
   },
   blurContainer: {
     flex: 1,
     justifyContent: 'center',
-    padding: 20,
+    padding: Theme.spacing.lg,
   },
   formContainer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    padding: 30,
-    borderRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 10,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 10,
+    backgroundColor: Theme.colors.card,
+    padding: Theme.spacing['2xl'],
+    borderRadius: Theme.borderRadius.lg,
+    ...Theme.shadows.lg,
   },
   title: {
     fontSize: 32,
     fontWeight: 'bold',
     textAlign: 'center',
     marginBottom: 8,
-    color: '#1F2937',
-    fontFamily: 'Inter-Bold',
+    color: Theme.colors.textPrimary,
+    fontFamily: Theme.typography.fontFamily.bold,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: Theme.typography.fontSize.base,
     textAlign: 'center',
-    marginBottom: 30,
-    color: '#6B7280',
-    fontFamily: 'Inter-Regular',
+    marginBottom: Theme.spacing['2xl'],
+    color: Theme.colors.textTertiary,
+    fontFamily: Theme.typography.fontFamily.regular,
   },
   input: {
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#1A1A2E',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: Theme.borderRadius.md,
+    padding: Theme.spacing.md,
+    marginBottom: Theme.spacing.md,
+    fontSize: Theme.typography.fontSize.base,
+    fontFamily: Theme.typography.fontFamily.regular,
+    color: '#FFFFFF',
   },
   button: {
-    backgroundColor: '#2563EB',
-    borderRadius: 12,
-    padding: 16,
+    backgroundColor: Theme.colors.primary,
+    borderRadius: Theme.borderRadius.md,
+    padding: Theme.spacing.md,
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: Theme.spacing.md,
   },
   buttonDisabled: {
     opacity: 0.6,
   },
   buttonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
-    fontFamily: 'Inter-SemiBold',
+    color: Theme.colors.textPrimary,
+    fontSize: Theme.typography.fontSize.base,
+    fontFamily: Theme.typography.fontFamily.semiBold,
   },
   linkButton: {
     alignItems: 'center',
   },
   linkText: {
-    color: '#2563EB',
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
+    color: Theme.colors.primary,
+    fontSize: Theme.typography.fontSize.sm,
+    fontFamily: Theme.typography.fontFamily.regular,
   },
 });

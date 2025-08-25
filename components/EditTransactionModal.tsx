@@ -16,6 +16,7 @@ import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '@/constants/Categories';
 import CurrencyPicker from './CurrencyPicker';
 import { ValidationUtils } from '@/utils/validation';
 import { Database } from '@/types/database';
+import Theme from '@/constants/Theme';
 
 type Transaction = Database['public']['Tables']['transactions']['Row'];
 
@@ -157,6 +158,7 @@ export default function EditTransactionModal({
               <TextInput
                 style={styles.amountInput}
                 placeholder="0.00"
+                placeholderTextColor={Theme.colors.textTertiary}
                 value={formData.amount}
                 onChangeText={(text) => setFormData(prev => ({ ...prev, amount: text }))}
                 keyboardType="numeric"
@@ -171,13 +173,17 @@ export default function EditTransactionModal({
                 selectedValue={formData.category}
                 onValueChange={(value) => setFormData(prev => ({ ...prev, category: value }))}
                 style={styles.picker}
+                dropdownIconColor="#FFFFFF"
+                mode="dropdown"
+                itemStyle={{ color: '#FFFFFF', backgroundColor: '#1A1A2E' }}
               >
-                <Picker.Item label="Select a category" value="" />
+                <Picker.Item label="Select a category" value="" color="#000000" />
                 {categories.map(category => (
                   <Picker.Item
                     key={category}
                     label={category}
                     value={category}
+                    color="#000000"
                   />
                 ))}
               </Picker>
@@ -189,6 +195,7 @@ export default function EditTransactionModal({
             <TextInput
               style={styles.textInput}
               placeholder="Enter description..."
+              placeholderTextColor={Theme.colors.textTertiary}
               value={formData.description}
               onChangeText={(text) => setFormData(prev => ({ ...prev, description: text }))}
               multiline
@@ -203,6 +210,7 @@ export default function EditTransactionModal({
               value={formData.date}
               onChangeText={(text) => setFormData(prev => ({ ...prev, date: text }))}
               placeholder="YYYY-MM-DD"
+              placeholderTextColor={Theme.colors.textTertiary}
               maxLength={10}
             />
           </View>
@@ -215,51 +223,57 @@ export default function EditTransactionModal({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: Theme.colors.background,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
-    backgroundColor: 'white',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: Theme.colors.backgroundSecondary,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: Theme.colors.border,
+    minHeight: 60, // Better touch target for header buttons
   },
   title: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1F2937',
-    fontFamily: 'Inter-Bold',
+    fontSize: 20,
+    color: Theme.colors.textPrimary,
+    fontFamily: Theme.typography.fontFamily.bold,
   },
   saveButton: {
-    color: '#2563EB',
-    fontSize: 16,
-    fontWeight: '600',
-    fontFamily: 'Inter-SemiBold',
+    color: Theme.colors.primary,
+    fontSize: 18,
+    fontFamily: Theme.typography.fontFamily.semiBold,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
   },
   saveButtonDisabled: {
     opacity: 0.5,
   },
   content: {
     flex: 1,
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
   },
   typeSelector: {
     flexDirection: 'row',
-    backgroundColor: '#F3F4F6',
-    borderRadius: 12,
-    padding: 4,
-    marginBottom: 24,
+    backgroundColor: Theme.colors.backgroundTertiary,
+    borderRadius: 16,
+    padding: 6,
+    marginBottom: 32,
+    height: 56, // Better touch target
   },
   typeButton: {
     flex: 1,
     paddingVertical: 12,
     alignItems: 'center',
-    borderRadius: 8,
+    borderRadius: 12,
+    justifyContent: 'center',
   },
   typeButtonActive: {
-    backgroundColor: 'white',
+    backgroundColor: Theme.colors.primary,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -271,62 +285,75 @@ const styles = StyleSheet.create({
   },
   typeButtonText: {
     fontSize: 16,
+    color: Theme.colors.textTertiary,
+    fontFamily: Theme.typography.fontFamily.medium,
     fontWeight: '500',
-    color: '#6B7280',
-    fontFamily: 'Inter-Medium',
   },
   typeButtonTextActive: {
-    color: '#1F2937',
-    fontFamily: 'Inter-Medium',
+    color: Theme.colors.textPrimary,
+    fontFamily: Theme.typography.fontFamily.medium,
   },
   formGroup: {
-    marginBottom: 20,
+    marginBottom: 24,
   },
   label: {
     fontSize: 16,
+    color: Theme.colors.textPrimary,
+    marginBottom: 12,
+    fontFamily: Theme.typography.fontFamily.semiBold,
     fontWeight: '600',
-    color: '#374151',
-    marginBottom: 8,
-    fontFamily: 'Inter-SemiBold',
   },
   amountContainer: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 16,
   },
   currencyPicker: {
-    backgroundColor: 'white',
-    borderRadius: 12,
+    backgroundColor: '#1A1A2E',
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    width: 100,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    width: 120, // Slightly wider for better mobile UX
+    overflow: 'hidden',
   },
   amountInput: {
     flex: 1,
-    backgroundColor: 'white',
-    borderRadius: 12,
+    backgroundColor: '#1A1A2E',
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: 'rgba(255, 255, 255, 0.2)',
     padding: 16,
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
+    fontSize: 18, // Larger for better mobile input
+    fontFamily: Theme.typography.fontFamily.regular,
+    color: '#FFFFFF',
+    minHeight: 56, // Better touch target
   },
   pickerContainer: {
-    backgroundColor: 'white',
-    borderRadius: 12,
+    backgroundColor: '#1A1A2E',
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    overflow: 'hidden',
+    minHeight: 56, // Better touch target
   },
   picker: {
-    height: 50,
+    height: 56,
+    color: '#FFFFFF',
+    backgroundColor: 'transparent',
+    marginTop: -8,
+    marginBottom: -8,
+    textAlign: 'center',
+    fontSize: 16, // Better readability on mobile
   },
   textInput: {
-    backgroundColor: 'white',
-    borderRadius: 12,
+    backgroundColor: '#1A1A2E',
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: 'rgba(255, 255, 255, 0.2)',
     padding: 16,
     fontSize: 16,
     textAlignVertical: 'top',
-    fontFamily: 'Inter-Regular',
+    fontFamily: Theme.typography.fontFamily.regular,
+    color: '#FFFFFF',
+    minHeight: 80, // Better for multiline input
   },
 });
