@@ -32,8 +32,10 @@ import { useProfile } from '@/hooks/useProfile';
 import AuthScreen from '@/components/AuthScreen';
 import ProfileModal from '@/components/ProfileModal';
 import ChangePasswordModal from '@/components/ChangePasswordModal';
+import CurrencySettingsModal from '@/components/CurrencySettingsModal';
 import { PDFService } from '@/services/pdfService';
 import { ExportService } from '@/services/exportService';
+import { ExchangeRateService } from '@/services/exchangeRateService';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useBudgets } from '@/hooks/useBudgets';
 import { router } from 'expo-router';
@@ -47,6 +49,7 @@ export default function SettingsScreen() {
   const { transactions } = useTransactions(user?.id);
   const { budgets } = useBudgets(user?.id);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showCurrencyModal, setShowCurrencyModal] = useState(false);
   const [showNotificationModal, setShowNotificationModal] = useState(false);
   const [showSecurityModal, setShowSecurityModal] = useState(false);
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
@@ -174,7 +177,7 @@ export default function SettingsScreen() {
   };
 
   const handleCurrencySettings = () => {
-    setShowProfileModal(true);
+    setShowCurrencyModal(true);
   };
 
   const handle2FASettings = () => {
@@ -288,7 +291,7 @@ export default function SettingsScreen() {
                 </Text>
                 <Text style={styles.userEmail}>{user.email}</Text>
                 <Text style={styles.userCurrency}>
-                  Base Currency: {profile?.base_currency || 'PKR'}
+                  Base Currency: {profile?.base_currency || 'PKR'} ({ExchangeRateService.getCurrencySymbol(profile?.base_currency || 'PKR')})
                 </Text>
               </>
             )}
@@ -344,6 +347,12 @@ export default function SettingsScreen() {
         onClose={() => setShowProfileModal(false)}
         onSave={handleProfileUpdate}
         profile={profile}
+      />
+
+      <CurrencySettingsModal
+        visible={showCurrencyModal}
+        onClose={() => setShowCurrencyModal(false)}
+        userId={user?.id || ''}
       />
 
       <ChangePasswordModal

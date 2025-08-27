@@ -311,10 +311,11 @@ export default function AdminScreen() {
       if (transactions) {
         for (const transaction of transactions) {
           try {
+            // Use USD as base currency for admin stats (global perspective)
             const convertedAmount = await ExchangeRateService.convertCurrency(
               Math.abs(transaction.amount),
               transaction.currency,
-              'PKR'
+              'USD'
             );
             totalVolume += convertedAmount;
 

@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Plus, Target, TriangleAlert as AlertTriangle, CircleCheck as CheckCircle } from 'lucide-react-native';
 import { useAuth } from '@/hooks/useAuth';
+import { useProfile } from '@/hooks/useProfile';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useBudgets } from '@/hooks/useBudgets';
 import { ExchangeRateService } from '@/services/exchangeRateService';
@@ -26,6 +27,7 @@ const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 export default function BudgetsScreen() {
   const { user } = useAuth();
+  const { profile } = useProfile(user?.id);
   const { transactions } = useTransactions(user?.id);
   const { budgets, loading, addBudget, deleteBudget } = useBudgets(user?.id);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -40,6 +42,9 @@ export default function BudgetsScreen() {
     const currentMonth = new Date().getMonth();
     const currentYear = new Date().getFullYear();
     
+    // Get user's base currency, default to PKR if not set
+    const userBaseCurrency = profile?.base_currency || 'PKR';
+    
     const spending: Record<string, number> = {};
 
     for (const budget of budgets) {
@@ -53,22 +58,30 @@ export default function BudgetsScreen() {
 
       let totalSpent = 0;
       for (const transaction of categoryTransactions) {
+        // Convert transaction amount to user's base currency for comparison
         const convertedAmount = await ExchangeRateService.convertCurrency(
           Math.abs(transaction.amount),
           transaction.currency,
-          budget.currency
+          userBaseCurrency
         );
         totalSpent += convertedAmount;
       }
 
+      // Convert budget amount to user's base currency for comparison
+      const budgetAmountInBaseCurrency = await ExchangeRateService.convertCurrency(
+        budget.amount,
+        budget.currency,
+        userBaseCurrency
+      );
+
       spending[budget.category] = totalSpent;
       
-      // Check for budget alerts
+      // Check for budget alerts using base currency
       await NotificationService.scheduleBudgetAlert(
         budget.category,
         totalSpent,
-        budget.amount,
-        budget.currency
+        budgetAmountInBaseCurrency,
+        userBaseCurrency
       );
     }
 

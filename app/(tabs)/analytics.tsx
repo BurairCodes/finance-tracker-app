@@ -10,6 +10,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { TrendingUp, ChartPie as PieChart, Calendar, TriangleAlert as AlertTriangle } from 'lucide-react-native';
 import { useAuth } from '@/hooks/useAuth';
+import { useProfile } from '@/hooks/useProfile';
 import { useTransactions } from '@/hooks/useTransactions';
 import { AIService } from '@/services/aiService';
 import { ExchangeRateService } from '@/services/exchangeRateService';
@@ -20,6 +21,7 @@ const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 export default function AnalyticsScreen() {
   const { user } = useAuth();
+  const { profile } = useProfile(user?.id);
   const { transactions, loading } = useTransactions(user?.id);
   const [categoryData, setCategoryData] = useState<Array<{ category: string; amount: number; percentage: number }>>([]);
   const [monthlyTrend, setMonthlyTrend] = useState<Array<{ month: string; amount: number }>>([]);
@@ -37,6 +39,9 @@ export default function AnalyticsScreen() {
     const currentMonth = new Date().getMonth();
     const currentYear = new Date().getFullYear();
     
+    // Get user's base currency, default to PKR if not set
+    const userBaseCurrency = profile?.base_currency || 'PKR';
+    
     const monthlyExpenses = transactions.filter(t => {
       const transactionDate = new Date(t.date);
       return t.type === 'expense' &&
@@ -51,7 +56,7 @@ export default function AnalyticsScreen() {
       const convertedAmount = await ExchangeRateService.convertCurrency(
         Math.abs(transaction.amount),
         transaction.currency,
-        'PKR'
+        userBaseCurrency
       );
       
       categoryTotals[transaction.category] = (categoryTotals[transaction.category] || 0) + convertedAmount;
@@ -90,7 +95,7 @@ export default function AnalyticsScreen() {
           const convertedAmount = await ExchangeRateService.convertCurrency(
             Math.abs(transaction.amount),
             transaction.currency,
-            'PKR'
+            userBaseCurrency
           );
           monthlyData[monthKey] += convertedAmount;
         }

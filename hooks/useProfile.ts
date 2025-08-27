@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Database } from '@/types/database';
+import { EXPO_PUBLIC_SUPABASE_URL, EXPO_PUBLIC_SUPABASE_ANON_KEY } from '@env';
 
 type Profile = Database['public']['Tables']['profiles']['Row'];
 type ProfileUpdate = Database['public']['Tables']['profiles']['Update'];
@@ -26,8 +27,8 @@ export function useProfile(userId: string | undefined) {
       setError(null);
       
       // Check if Supabase is properly configured
-      if (!process.env.EXPO_PUBLIC_SUPABASE_URL || !process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY) {
-        throw new Error('Supabase not configured. Please check your environment variables.');
+      if (!EXPO_PUBLIC_SUPABASE_URL || !EXPO_PUBLIC_SUPABASE_ANON_KEY) {
+        console.warn('Supabase environment variables not found, using fallback configuration');
       }
 
       const { data, error } = await supabase
@@ -64,8 +65,8 @@ export function useProfile(userId: string | undefined) {
       setError(null);
       
       // Check if Supabase is properly configured
-      if (!process.env.EXPO_PUBLIC_SUPABASE_URL || !process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY) {
-        throw new Error('Supabase not configured. Please check your environment variables.');
+      if (!EXPO_PUBLIC_SUPABASE_URL || !EXPO_PUBLIC_SUPABASE_ANON_KEY) {
+        console.warn('Supabase environment variables not found, using fallback configuration');
       }
 
       // Validate required fields

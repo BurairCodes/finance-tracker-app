@@ -1,4 +1,4 @@
-# 🚫 OpenAI Rate Limit Fix Guide
+r# 🚫 OpenAI Rate Limit Fix Guide
 
 ## 🚨 **Current Issue: 429 Rate Limit Error**
 

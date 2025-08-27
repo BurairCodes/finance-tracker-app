@@ -48,6 +48,9 @@ export default function DashboardScreen() {
     const currentMonth = new Date().getMonth();
     const currentYear = new Date().getFullYear();
     
+    // Get user's base currency, default to PKR if not set
+    const userBaseCurrency = profile?.base_currency || 'PKR';
+    
     const monthlyTransactions = transactions.filter(t => {
       const transactionDate = new Date(t.date);
       return transactionDate.getMonth() === currentMonth && 
@@ -58,11 +61,11 @@ export default function DashboardScreen() {
     let totalExpenses = 0;
 
     for (const transaction of monthlyTransactions) {
-      // Convert to USD for consistent calculations
+      // Convert to user's base currency for consistent calculations
       const convertedAmount = await ExchangeRateService.convertCurrency(
         Math.abs(transaction.amount),
         transaction.currency,
-        'PKR'
+        userBaseCurrency
       );
 
       if (transaction.type === 'income') {
@@ -164,7 +167,7 @@ export default function DashboardScreen() {
         >
           <Text style={styles.balanceLabel}>Current Balance</Text>
           <Text style={styles.balanceAmount}>
-            {ExchangeRateService.formatCurrency(monthlyStats.savings, 'PKR')}
+            {ExchangeRateService.formatCurrency(monthlyStats.savings, profile?.base_currency || 'PKR')}
           </Text>
           <Text style={styles.balanceSubtext}>This month</Text>
         </LinearGradient>
@@ -176,7 +179,7 @@ export default function DashboardScreen() {
             </View>
             <Text style={styles.statLabel}>Income</Text>
             <Text style={styles.statAmount}>
-              {ExchangeRateService.formatCurrency(monthlyStats.income, 'PKR')}
+              {ExchangeRateService.formatCurrency(monthlyStats.income, profile?.base_currency || 'PKR')}
             </Text>
           </View>
 
@@ -186,7 +189,7 @@ export default function DashboardScreen() {
             </View>
             <Text style={styles.statLabel}>Expenses</Text>
             <Text style={styles.statAmount}>
-              {ExchangeRateService.formatCurrency(monthlyStats.expenses, 'PKR')}
+              {ExchangeRateService.formatCurrency(monthlyStats.expenses, profile?.base_currency || 'PKR')}
             </Text>
           </View>
         </View>
