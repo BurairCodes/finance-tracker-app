@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
+import { Chrome } from 'lucide-react-native';
 import { useAuth } from '@/hooks/useAuth';
 import { ValidationUtils } from '@/utils/validation';
 import Theme from '@/constants/Theme';
@@ -21,7 +22,8 @@ export default function AuthScreen() {
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [loading, setLoading] = useState(false);
-  const { signIn, signUp } = useAuth();
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const { signIn, signUp, signInWithGoogle } = useAuth();
 
   const handleSubmit = async () => {
     if (!email.trim() || !password.trim()) {
@@ -65,6 +67,31 @@ export default function AuthScreen() {
       Alert.alert('Error', 'Something went wrong. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    setGoogleLoading(true);
+    try {
+      const { error } = await signInWithGoogle();
+      if (error) {
+        console.error('Google Sign-In Error:', error);
+        Alert.alert(
+          'Google Sign-In Error', 
+          error.message || 'Failed to sign in with Google. Please try again.'
+        );
+      } else {
+        // Success - the user will be automatically redirected
+        console.log('Google Sign-In initiated successfully');
+      }
+    } catch (error) {
+      console.error('Google Sign-In Exception:', error);
+      Alert.alert(
+        'Error', 
+        'Something went wrong with Google Sign-In. Please try again.'
+      );
+    } finally {
+      setGoogleLoading(false);
     }
   };
 
@@ -120,6 +147,23 @@ export default function AuthScreen() {
             >
               <Text style={styles.buttonText}>
                 {loading ? 'Loading...' : (isLogin ? 'Sign In' : 'Sign Up')}
+              </Text>
+            </TouchableOpacity>
+
+            <View style={styles.dividerContainer}>
+              <View style={styles.divider} />
+              <Text style={styles.dividerText}>or</Text>
+              <View style={styles.divider} />
+            </View>
+
+            <TouchableOpacity
+              style={[styles.googleButton, googleLoading && styles.buttonDisabled]}
+              onPress={handleGoogleSignIn}
+              disabled={googleLoading}
+            >
+              <Chrome size={20} color="#4285F4" />
+              <Text style={styles.googleButtonText}>
+                {googleLoading ? 'Loading...' : 'Continue with Google'}
               </Text>
             </TouchableOpacity>
 
@@ -207,6 +251,39 @@ const styles = StyleSheet.create({
   linkText: {
     color: Theme.colors.primary,
     fontSize: Theme.typography.fontSize.sm,
+    fontFamily: Theme.typography.fontFamily.regular,
+  },
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: Theme.spacing.md,
+  },
+  divider: {
+    flex: 1,
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  dividerText: {
+    marginHorizontal: Theme.spacing.sm,
+    color: Theme.colors.textTertiary,
+    fontSize: Theme.typography.fontSize.sm,
+    fontFamily: Theme.typography.fontFamily.regular,
+  },
+  googleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#1A1A2E',
+    borderRadius: Theme.borderRadius.md,
+    padding: Theme.spacing.md,
+    marginTop: Theme.spacing.md,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  googleButtonText: {
+    marginLeft: Theme.spacing.sm,
+    color: Theme.colors.textPrimary,
+    fontSize: Theme.typography.fontSize.base,
     fontFamily: Theme.typography.fontFamily.regular,
   },
 });

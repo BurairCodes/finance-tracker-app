@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
+import { OAuthUtils } from '@/utils/oauth';
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
@@ -19,7 +20,13 @@ export function useAuth() {
       setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    // Set up OAuth redirect listener
+    const oauthSubscription = OAuthUtils.setupOAuthListener();
+
+    return () => {
+      subscription.unsubscribe();
+      oauthSubscription?.remove();
+    };
   }, []);
 
   const signIn = async (email: string, password: string) => {
@@ -43,6 +50,22 @@ export function useAuth() {
     return { data, error };
   };
 
+  const signInWithGoogle = async () => {
+    const oauthConfig = OAuthUtils.getOAuthConfig();
+    
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: oauthConfig.redirectTo,
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent',
+        },
+      },
+    });
+    return { data, error };
+  };
+
   const signOut = async () => {
     const { error } = await supabase.auth.signOut();
     return { error };
@@ -53,6 +76,7 @@ export function useAuth() {
     loading,
     signIn,
     signUp,
+    signInWithGoogle,
     signOut,
   };
 }

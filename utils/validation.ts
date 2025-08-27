@@ -24,25 +24,18 @@ export class ValidationUtils {
   }
 
   static formatCurrency(amount: number, currency: string): string {
-    try {
-      return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: currency,
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      }).format(amount);
-    } catch (error) {
-      // Fallback for unsupported currencies
-      const symbols: Record<string, string> = {
-        PKR: '₨',
-        USD: '$',
-        EUR: '€',
-        GBP: '£',
-        JPY: '¥',
-        INR: '₹',
-      };
-      const symbol = symbols[currency] || currency;
-      return `${symbol}${amount.toFixed(2)}`;
-    }
+    // Always use fallback to avoid Intl.NumberFormat issues in React Native
+    const symbols: Record<string, string> = {
+      PKR: '₨',
+      USD: '$',
+      EUR: '€',
+      GBP: '£',
+      JPY: '¥',
+      INR: '₹',
+      CAD: 'C$',
+      AUD: 'A$',
+    };
+    const symbol = symbols[currency] || currency;
+    return `${symbol}${amount.toFixed(2)}`;
   }
 }

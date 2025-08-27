@@ -33,6 +33,7 @@ import AuthScreen from '@/components/AuthScreen';
 import ProfileModal from '@/components/ProfileModal';
 import ChangePasswordModal from '@/components/ChangePasswordModal';
 import { PDFService } from '@/services/pdfService';
+import { ExportService } from '@/services/exportService';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useBudgets } from '@/hooks/useBudgets';
 import { router } from 'expo-router';
@@ -94,113 +95,59 @@ export default function SettingsScreen() {
   };
 
   const handleExportData = async () => {
-    Alert.alert(
-      'Export Data',
-      'Generate a monthly financial report?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Export', 
-          onPress: async () => {
-            setExportingData(true);
-            try {
-              // Basic validation
-              if (!transactions || transactions.length === 0) {
-                Alert.alert(
-                  'No Data Available', 
-                  'You need to have transactions to generate a report. Please add some transactions first.',
-                  [{ text: 'OK' }]
-                );
-                return;
+    setExportingData(true);
+    try {
+      Alert.alert(
+        'Export Data',
+        'Choose what to export:',
+        [
+          {
+            text: 'Transactions (CSV)',
+            onPress: async () => {
+              try {
+                await ExportService.exportTransactionsToCSV(transactions);
+                Alert.alert('Success', 'Transactions exported successfully!');
+              } catch (error) {
+                Alert.alert('Error', 'Failed to export transactions');
               }
-
-              const currentDate = new Date();
-              const currentMonth = currentDate.getMonth();
-              const currentYear = currentDate.getFullYear();
-
-              // Check if there are transactions for current month
-              const monthlyTransactions = transactions.filter(t => {
-                try {
-                  const date = new Date(t.date);
-                  const isCurrentMonth = date.getMonth() === currentMonth && date.getFullYear() === currentYear;
-                  return isCurrentMonth;
-                } catch (error) {
-                  console.warn('Invalid transaction date:', t.date, error);
-                  return false;
-                }
-              });
-
-              if (monthlyTransactions.length === 0) {
-                Alert.alert(
-                  'No Data for Current Month',
-                  `No transactions found for ${currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}. Would you like to export all transactions instead?`,
-                  [
-                    { text: 'Cancel', style: 'cancel' },
-                    { 
-                      text: 'Export All', 
-                      onPress: async () => {
-                        try {
-                          await PDFService.generateMonthlyReport(
-                            transactions,
-                            budgets || [],
-                            currentMonth,
-                            currentYear,
-                            user?.email || profile?.email || 'Unknown User'
-                          );
-                          
-                          Alert.alert('Success', 'Report generated and shared successfully!');
-                        } catch (error) {
-                          console.error('Export all error:', error);
-                          Alert.alert('Error', `Failed to generate report: ${error instanceof Error ? error.message : 'Unknown error'}`);
-                        }
-                      }
-                    }
-                  ]
-                );
-                return;
-              }
-
-              await PDFService.generateMonthlyReport(
-                transactions,
-                budgets || [],
-                currentMonth,
-                currentYear,
-                user?.email || profile?.email || 'Unknown User'
-              );
-              
-              Alert.alert(
-                'Success', 
-                'Report generated and shared successfully! You can find it in your downloads or shared files.',
-                [{ text: 'OK' }]
-              );
-            } catch (error) {
-              console.error('Export error:', error);
-              
-              // Provide more specific error messages
-              let errorMessage = 'Failed to generate report. Please try again.';
-              
-              if (error instanceof Error) {
-                if (error.message.includes('No transactions found')) {
-                  errorMessage = 'No transactions found for the selected month. Please add some transactions first.';
-                } else if (error.message.includes('User email is required')) {
-                  errorMessage = 'User information is missing. Please try logging out and back in.';
-                } else if (error.message.includes('Sharing is not available')) {
-                  errorMessage = 'File sharing is not available on this device. Please try on a different device.';
-                } else if (error.message.includes('Unable to access file system')) {
-                  errorMessage = 'Unable to access file system. Please check your device permissions.';
-                } else {
-                  errorMessage = `Export failed: ${error.message}`;
-                }
-              }
-              
-              Alert.alert('Export Failed', errorMessage, [{ text: 'OK' }]);
-            } finally {
-              setExportingData(false);
             }
+          },
+          {
+            text: 'Budgets (CSV)',
+            onPress: async () => {
+              try {
+                await ExportService.exportBudgetsToCSV(budgets);
+                Alert.alert('Success', 'Budgets exported successfully!');
+              } catch (error) {
+                Alert.alert('Error', 'Failed to export budgets');
+              }
+            }
+          },
+          {
+            text: 'Monthly Report',
+            onPress: async () => {
+              try {
+                const report = ExportService.generateMonthlyReport(transactions);
+                Alert.alert(
+                  'Monthly Report',
+                  `Income: $${report.totalIncome.toFixed(2)}\nExpenses: $${report.totalExpenses.toFixed(2)}\nNet Savings: $${report.netSavings.toFixed(2)}\n\nTop Categories:\n${report.topCategories.map(cat => `• ${cat.category}: $${cat.amount.toFixed(2)}`).join('\n')}`
+                );
+              } catch (error) {
+                Alert.alert('Error', 'Failed to generate report');
+              }
+            }
+          },
+          {
+            text: 'Cancel',
+            style: 'cancel'
           }
-        },
-      ]
-    );
+        ]
+      );
+    } catch (error) {
+      Alert.alert('Error', 'Failed to export data');
+    } finally {
+      setExportingData(false);
+    }
   };
 
   const handleProfileUpdate = async (updates: {

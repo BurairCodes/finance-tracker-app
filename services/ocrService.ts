@@ -1,3 +1,11 @@
+import axios from 'axios';
+import {
+  EXPO_PUBLIC_AZURE_VISION_ENDPOINT,
+  AZURE_COMPUTER_VISION_ENDPOINT,
+  EXPO_PUBLIC_AZURE_VISION_API_KEY,
+  AZURE_COMPUTER_VISION_API_KEY,
+} from '@env';
+
 export interface ReceiptData {
   amount: number;
   merchant: string;
@@ -6,32 +14,50 @@ export interface ReceiptData {
   confidence: number;
   rawText: string;
   items?: string[];
+  currency?: string;
+  tax?: number;
+  total?: number;
 }
 
 export class OCRService {
   private static getAzureCredentials() {
+    // Debug: Log all environment variables
+    console.log('🔍 Debugging environment variables...');
+    console.log('EXPO_PUBLIC_AZURE_VISION_ENDPOINT:', EXPO_PUBLIC_AZURE_VISION_ENDPOINT);
+    console.log('AZURE_COMPUTER_VISION_ENDPOINT:', AZURE_COMPUTER_VISION_ENDPOINT);
+    console.log('EXPO_PUBLIC_AZURE_VISION_API_KEY:', EXPO_PUBLIC_AZURE_VISION_API_KEY ? '***SET***' : 'NOT SET');
+    console.log('AZURE_COMPUTER_VISION_API_KEY:', AZURE_COMPUTER_VISION_API_KEY ? '***SET***' : 'NOT SET');
+    
     // Get credentials from environment variables
-    const endpoint = process.env.EXPO_PUBLIC_AZURE_VISION_ENDPOINT;
-    const apiKey = process.env.EXPO_PUBLIC_AZURE_VISION_API_KEY;
+    const endpoint = EXPO_PUBLIC_AZURE_VISION_ENDPOINT || AZURE_COMPUTER_VISION_ENDPOINT;
+    const apiKey = EXPO_PUBLIC_AZURE_VISION_API_KEY || AZURE_COMPUTER_VISION_API_KEY;
 
     if (!endpoint || !apiKey) {
-      console.log('Azure Computer Vision credentials not configured');
+      console.log('🔴 Azure Computer Vision credentials not configured');
       console.log('Please set EXPO_PUBLIC_AZURE_VISION_ENDPOINT and EXPO_PUBLIC_AZURE_VISION_API_KEY in your .env file');
+      console.log('Or use AZURE_COMPUTER_VISION_ENDPOINT and AZURE_COMPUTER_VISION_API_KEY');
+      console.log('Current endpoint:', endpoint);
+      console.log('Current apiKey:', apiKey ? '***SET***' : 'NOT SET');
       return null;
     }
 
+    console.log('✅ Azure Computer Vision credentials found');
+    console.log('Endpoint:', endpoint);
     return { endpoint, apiKey };
   }
 
   static async extractTextFromImage(imageBase64: string): Promise<string> {
     try {
+      console.log('🔍 Starting Azure OCR text extraction...');
       const credentials = this.getAzureCredentials();
       
       if (!credentials) {
-        console.log('Falling back to mock data due to missing Azure credentials');
+        console.log('⚠️ Falling back to mock data due to missing Azure credentials');
         return this.getMockReceiptText();
       }
 
+      console.log('📤 Sending image to Azure Computer Vision API...');
+      
       // Convert base64 to Uint8Array for React Native compatibility
       const binaryString = atob(imageBase64);
       const bytes = new Uint8Array(binaryString.length);
@@ -39,28 +65,29 @@ export class OCRService {
         bytes[i] = binaryString.charCodeAt(i);
       }
 
+      console.log(`📊 Image size: ${bytes.length} bytes`);
+
       // Make direct HTTP request to Azure Computer Vision API
-      const response = await fetch(
+      const response = await axios.post(
         `${credentials.endpoint}vision/v3.2/read/analyze`,
+        bytes,
         {
-          method: 'POST',
           headers: {
             'Content-Type': 'application/octet-stream',
             'Ocp-Apim-Subscription-Key': credentials.apiKey,
           },
-          body: bytes,
         }
       );
 
-      if (!response.ok) {
-        throw new Error(`Azure API error: ${response.status} ${response.statusText}`);
-      }
+      console.log('✅ Azure OCR request sent successfully');
 
       // Get the operation location for polling
-      const operationLocation = response.headers.get('Operation-Location');
+      const operationLocation = response.headers['operation-location'];
       if (!operationLocation) {
         throw new Error('No operation location received from Azure');
       }
+
+      console.log('⏳ Polling for OCR results...');
 
       // Poll for results (Azure OCR is asynchronous)
       let result = null;
@@ -69,26 +96,26 @@ export class OCRService {
 
       while (attempts < maxAttempts) {
         await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+        attempts++;
 
-        const pollResponse = await fetch(operationLocation, {
+        console.log(`🔄 Polling attempt ${attempts}/${maxAttempts}...`);
+
+        const pollResponse = await axios.get(operationLocation, {
           headers: {
             'Ocp-Apim-Subscription-Key': credentials.apiKey,
           },
         });
 
-        if (!pollResponse.ok) {
-          throw new Error(`Polling error: ${pollResponse.status}`);
-        }
-
-        result = await pollResponse.json();
+        result = pollResponse.data as any;
 
         if (result.status === 'succeeded') {
+          console.log('✅ Azure OCR processing completed successfully');
           break;
         } else if (result.status === 'failed') {
           throw new Error('Azure OCR processing failed');
         }
 
-        attempts++;
+        console.log(`⏳ Status: ${result.status}, continuing to poll...`);
       }
 
       if (!result || result.status !== 'succeeded') {
@@ -97,8 +124,8 @@ export class OCRService {
 
       // Extract text from the result
       let fullText = '';
-      if (result.analyzeResult && result.analyzeResult.readResults) {
-        for (const page of result.analyzeResult.readResults) {
+      if ((result as any).analyzeResult && (result as any).analyzeResult.readResults) {
+        for (const page of (result as any).analyzeResult.readResults) {
           if (page.lines) {
             for (const line of page.lines) {
               fullText += line.text + '\n';
@@ -107,44 +134,48 @@ export class OCRService {
         }
       }
 
-      console.log('Azure Computer Vision extracted text:', fullText);
+      console.log('📝 Azure Computer Vision extracted text:');
+      console.log('─'.repeat(50));
+      console.log(fullText);
+      console.log('─'.repeat(50));
+      
       return fullText.trim();
 
     } catch (error) {
-      console.error('Error extracting text from image:', error);
-      console.log('Falling back to mock data due to API error');
+      console.error('❌ Error extracting text from image:', error);
+      console.log('⚠️ Falling back to mock data due to API error');
       return this.getMockReceiptText();
     }
   }
 
-  static async analyzeReceipt(imageBase64: string): Promise<ReceiptData> {
+  static async analyzeReceipt(imageBase64: string, userCurrency: string = 'PKR'): Promise<ReceiptData> {
     try {
+      console.log('🔍 Starting receipt analysis...');
+      
+      // Step 1: Extract text using Azure OCR
       const rawText = await this.extractTextFromImage(imageBase64);
-      console.log('Raw text received for parsing:', rawText);
-      const parsedData = await this.parseReceiptText(rawText);
-      console.log('Parsed receipt data:', parsedData);
+      console.log('📝 Raw text extracted from image, length:', rawText.length);
+      
+      // Step 2: Parse text using enhanced parsing
+      console.log('🔧 Using enhanced parsing for receipt data extraction...');
+      const parsedData = this.parseWithEnhancedAI(rawText) || this.parseWithBasicRegex(rawText, userCurrency);
+      console.log('✅ Receipt parsing completed successfully');
+      console.log('📊 Parsed data:', parsedData);
+      
       return parsedData;
     } catch (error) {
-      console.error('Error analyzing receipt:', error);
-      // Return mock data as fallback
+      console.error('❌ Error analyzing receipt:', error);
+      console.log('⚠️ Falling back to mock data');
       const mockText = this.getMockReceiptText();
-      return await this.parseReceiptText(mockText);
+      return this.parseWithEnhancedAI(mockText) || this.parseWithBasicRegex(mockText, userCurrency);
     }
   }
 
-  private static async parseReceiptText(text: string): Promise<ReceiptData> {
-    try {
-      // Enhanced parsing with multiple strategies
-      const enhancedResult = this.parseWithEnhancedAI(text);
-      if (enhancedResult && enhancedResult.confidence > 70) {
-        console.log('Enhanced AI parsing results:', enhancedResult);
-        return enhancedResult;
-      }
-    } catch (error) {
-      console.log('Enhanced AI parsing failed, falling back to regex:', error);
-    }
 
-    // Fallback to regex parsing
+
+  private static parseWithBasicRegex(text: string, userCurrency: string = 'PKR'): ReceiptData {
+    console.log('🔧 Using basic regex parsing as fallback...');
+    
     const amount = this.extractAmount(text);
     const merchant = this.extractMerchant(text);
     const date = this.extractDate(text);
@@ -152,7 +183,7 @@ export class OCRService {
     const items = this.extractItems(text);
     const confidence = this.calculateConfidence(text, amount, merchant);
 
-    console.log('Regex parsing results:');
+    console.log('📊 Basic regex parsing results:');
     console.log('- Amount:', amount);
     console.log('- Merchant:', merchant);
     console.log('- Date:', date);
@@ -167,7 +198,77 @@ export class OCRService {
       category,
       confidence,
       rawText: text,
-      items
+      items,
+      currency: userCurrency,
+    };
+  }
+
+  private static async parseReceiptText(text: string, userCurrency: string = 'PKR'): Promise<ReceiptData> {
+    try {
+      // Try LLM processing first for better accuracy
+      const { LLMService } = await import('./llmService');
+      const llmData = await LLMService.processReceiptText(text, userCurrency);
+      
+      console.log('LLM processing results:', llmData);
+      
+      // If LLM processing was successful, return the result
+      if (llmData.confidence > 0.6) {
+        return {
+          amount: llmData.amount,
+          merchant: llmData.merchant,
+          date: llmData.date,
+          category: llmData.category,
+          confidence: llmData.confidence,
+          rawText: text,
+          items: llmData.items,
+          currency: llmData.currency,
+          tax: llmData.tax,
+          total: llmData.total,
+        };
+      }
+    } catch (error) {
+      console.log('LLM processing failed, falling back to enhanced parsing:', error);
+    }
+
+    // Fallback to enhanced parsing if LLM fails or has low confidence
+    try {
+      const enhancedResult = this.parseWithEnhancedAI(text);
+      if (enhancedResult && enhancedResult.confidence > 70) {
+        console.log('Enhanced AI parsing results:', enhancedResult);
+        return {
+          ...enhancedResult,
+          currency: userCurrency,
+        };
+      }
+    } catch (error) {
+      console.log('Enhanced AI parsing failed, falling back to basic regex:', error);
+    }
+
+    // Final fallback to basic regex parsing
+    const amount = this.extractAmount(text);
+    const merchant = this.extractMerchant(text);
+    const date = this.extractDate(text);
+    const category = this.categorizeMerchant(merchant);
+    const items = this.extractItems(text);
+    const confidence = this.calculateConfidence(text, amount, merchant);
+
+    console.log('Basic regex parsing results:');
+    console.log('- Amount:', amount);
+    console.log('- Merchant:', merchant);
+    console.log('- Date:', date);
+    console.log('- Category:', category);
+    console.log('- Items:', items);
+    console.log('- Confidence:', confidence);
+
+    return {
+      amount,
+      merchant,
+      date,
+      category,
+      confidence,
+      rawText: text,
+      items,
+      currency: userCurrency,
     };
   }
 

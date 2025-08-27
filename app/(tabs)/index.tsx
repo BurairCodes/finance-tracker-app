@@ -145,7 +145,7 @@ export default function DashboardScreen() {
         }
       >
         <View style={styles.header}>
-          <Text style={styles.greeting}>Good morning</Text>
+          <Text style={styles.greeting}>Welcome Back!</Text>
                           <Text style={styles.userName}>{profile?.full_name || user.user_metadata?.full_name || 'User'}</Text>
         </View>
 
@@ -244,7 +244,6 @@ export default function DashboardScreen() {
         <Animated.View
           style={[
             styles.expandableFab,
-            styles.addFab,
             {
               transform: [{
                 translateY: fabAnimation.interpolate({
@@ -264,7 +263,20 @@ export default function DashboardScreen() {
             }}
             activeOpacity={0.7}
           >
-            <Plus size={20} color="white" />
+            <LinearGradient
+              colors={Theme.colors.gradientPrimary}
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: 24,
+                justifyContent: 'center',
+                alignItems: 'center',
+              }}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <Plus size={20} color="white" />
+            </LinearGradient>
           </TouchableOpacity>
         </Animated.View>
 
@@ -272,7 +284,6 @@ export default function DashboardScreen() {
         <Animated.View
           style={[
             styles.expandableFab,
-            styles.cameraFab,
             {
               transform: [{
                 translateY: fabAnimation.interpolate({
@@ -292,30 +303,54 @@ export default function DashboardScreen() {
             }}
             activeOpacity={0.7}
           >
-            <Camera size={20} color="white" />
+            <LinearGradient
+              colors={[Theme.colors.success, Theme.colors.successLight]}
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: 24,
+                justifyContent: 'center',
+                alignItems: 'center',
+              }}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <Camera size={20} color="white" />
+            </LinearGradient>
           </TouchableOpacity>
         </Animated.View>
 
         {/* Main FAB */}
         <TouchableOpacity
           style={styles.mainFab}
-                  onPress={() => {
-          toggleFab();
-        }}
+          onPress={toggleFab}
           activeOpacity={0.8}
         >
-          <Animated.View
+          <LinearGradient
+            colors={Theme.colors.gradientSecondary}
             style={{
-              transform: [{
-                rotate: fabAnimation.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: ['0deg', '45deg'],
-                }),
-              }],
+              width: 56,
+              height: 56,
+              borderRadius: 28,
+              justifyContent: 'center',
+              alignItems: 'center',
             }}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
           >
-            <Plus size={24} color="white" />
-          </Animated.View>
+            <Animated.View
+              style={{
+                transform: [{
+                  rotate: fabAnimation.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: ['0deg', '45deg'],
+                  }),
+                }],
+              }}
+            >
+              <Plus size={24} color="white" />
+            </Animated.View>
+          </LinearGradient>
         </TouchableOpacity>
       </View>
 
@@ -494,7 +529,7 @@ const styles = StyleSheet.create({
   },
   fabContainer: {
     position: 'absolute',
-    bottom: Platform.OS === 'ios' ? 100 : 80,
+    bottom: Platform.OS === 'ios' ? 120 : 100,
     right: 20,
     alignItems: 'center',
     justifyContent: 'center',
@@ -503,7 +538,6 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: Theme.colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     ...Theme.shadows.glass,
@@ -527,12 +561,6 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  cameraFab: {
-    backgroundColor: Theme.colors.success,
-  },
-  addFab: {
-    backgroundColor: Theme.colors.info,
   },
 
 });

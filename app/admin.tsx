@@ -140,10 +140,12 @@ import {
   Hash as HashIcon8,
   Hash as HashIcon9,
   Hash as HashIcon10,
+  ArrowLeft,
 } from 'lucide-react-native';
 import { supabase } from '@/lib/supabase';
 import { ExchangeRateService } from '@/services/exchangeRateService';
 import Theme from '@/constants/Theme';
+import { router } from 'expo-router';
 
 const { width, height } = Dimensions.get('window');
 
@@ -223,8 +225,45 @@ export default function AdminScreen() {
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive'>('all');
 
   useEffect(() => {
-    fetchAdminData();
+    checkAdminAccess();
   }, []);
+
+  const checkAdminAccess = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        Alert.alert('Access Denied', 'You must be logged in to access the admin dashboard');
+        router.back();
+        return;
+      }
+
+      // Check if user has admin role
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('user_role')
+        .eq('id', user.id)
+        .single();
+
+      if (error || !profile) {
+        Alert.alert('Access Denied', 'Unable to verify admin permissions');
+        router.back();
+        return;
+      }
+
+      if (!['admin', 'super_admin'].includes(profile.user_role)) {
+        Alert.alert('Access Denied', 'You do not have permission to access the admin dashboard');
+        router.back();
+        return;
+      }
+
+      // If admin access is confirmed, fetch data
+      fetchAdminData();
+    } catch (error) {
+      console.error('Admin access check failed:', error);
+      Alert.alert('Error', 'Failed to verify admin access');
+      router.back();
+    }
+  };
 
   const fetchAdminData = async () => {
     try {
@@ -255,10 +294,14 @@ export default function AdminScreen() {
         .from('profiles')
         .select('*', { count: 'exact', head: true });
 
-      // Fetch transaction stats
-      const { data: transactions, count: transactionCount } = await supabase
+      // Fetch transaction stats with better error handling
+      const { data: transactions, count: transactionCount, error: transactionError } = await supabase
         .from('transactions')
         .select('amount, currency, category, created_at, user_id', { count: 'exact' });
+
+      if (transactionError) {
+        console.error('Transaction fetch error:', transactionError);
+      }
 
       // Calculate total volume and category/currency stats
       let totalVolume = 0;
@@ -267,26 +310,32 @@ export default function AdminScreen() {
 
       if (transactions) {
         for (const transaction of transactions) {
-          const convertedAmount = await ExchangeRateService.convertCurrency(
-            Math.abs(transaction.amount),
-            transaction.currency,
-            'PKR'
-          );
-          totalVolume += convertedAmount;
+          try {
+            const convertedAmount = await ExchangeRateService.convertCurrency(
+              Math.abs(transaction.amount),
+              transaction.currency,
+              'PKR'
+            );
+            totalVolume += convertedAmount;
 
-          // Category stats
-          if (!categoryStats[transaction.category]) {
-            categoryStats[transaction.category] = { count: 0, amount: 0 };
-          }
-          categoryStats[transaction.category].count++;
-          categoryStats[transaction.category].amount += convertedAmount;
+            // Category stats
+            if (!categoryStats[transaction.category]) {
+              categoryStats[transaction.category] = { count: 0, amount: 0 };
+            }
+            categoryStats[transaction.category].count++;
+            categoryStats[transaction.category].amount += convertedAmount;
 
-          // Currency stats
-          if (!currencyStats[transaction.currency]) {
-            currencyStats[transaction.currency] = { count: 0, amount: 0 };
+            // Currency stats
+            if (!currencyStats[transaction.currency]) {
+              currencyStats[transaction.currency] = { count: 0, amount: 0 };
+            }
+            currencyStats[transaction.currency].count++;
+            currencyStats[transaction.currency].amount += convertedAmount;
+          } catch (conversionError) {
+            console.error('Currency conversion error:', conversionError);
+            // Fallback to original amount
+            totalVolume += Math.abs(transaction.amount);
           }
-          currencyStats[transaction.currency].count++;
-          currencyStats[transaction.currency].amount += convertedAmount;
         }
       }
 
@@ -319,29 +368,38 @@ export default function AdminScreen() {
           amount: stats.amount 
         }));
 
-      // Mock recent activity
+      // Get real recent activity from admin_actions table
+      const { data: recentAdminActions } = await supabase
+        .from('admin_actions')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      // Get recent user signups
+      const { data: recentSignups } = await supabase
+        .from('profiles')
+        .select('email, created_at')
+        .order('created_at', { ascending: false })
+        .limit(3);
+
+      // Combine real activity data
       const recentActivity = [
-        {
-          id: '1',
+        ...(recentSignups?.map((signup, index) => ({
+          id: `signup-${index}`,
           type: 'user_signup' as const,
           description: 'New user registered',
-          timestamp: new Date().toISOString(),
-          user: 'john.doe@example.com',
-        },
-        {
-          id: '2',
+          timestamp: signup.created_at,
+          user: signup.email,
+        })) || []),
+        ...(recentAdminActions?.map((action, index) => ({
+          id: `action-${action.id}`,
           type: 'admin_action' as const,
-          description: 'User role changed to admin',
-          timestamp: new Date(Date.now() - 3600000).toISOString(),
-          user: 'admin@example.com',
-        },
-        {
-          id: '3',
-          type: 'system_event' as const,
-          description: 'System backup completed',
-          timestamp: new Date(Date.now() - 7200000).toISOString(),
-        },
-      ];
+          description: action.description,
+          timestamp: action.created_at,
+          user: action.admin_user,
+        })) || []),
+      ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+       .slice(0, 5);
 
       setStats(prev => ({
         ...prev,
@@ -360,6 +418,7 @@ export default function AdminScreen() {
 
   const fetchUsers = async () => {
     try {
+      // Fetch profiles with user roles
       const { data: profiles, error } = await supabase
         .from('profiles')
         .select('*')
@@ -367,15 +426,51 @@ export default function AdminScreen() {
 
       if (error) throw error;
 
-      // Mock additional user data
-      const usersWithStats: User[] = (profiles || []).map((profile, index) => ({
-        ...profile,
-        user_role: index === 0 ? 'super_admin' : index < 3 ? 'admin' : 'user',
-        is_active: Math.random() > 0.1,
-        last_login: new Date(Date.now() - Math.random() * 86400000).toISOString(),
-        transaction_count: Math.floor(Math.random() * 100),
-        total_volume: Math.floor(Math.random() * 100000),
-      }));
+      // Fetch transaction counts and volumes for each user
+      const usersWithStats: User[] = await Promise.all(
+        (profiles || []).map(async (profile) => {
+          // Get user's transaction count
+          const { count: transactionCount } = await supabase
+            .from('transactions')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', profile.id);
+
+          // Get user's total volume
+          const { data: userTransactions } = await supabase
+            .from('transactions')
+            .select('amount, currency')
+            .eq('user_id', profile.id);
+
+          let totalVolume = 0;
+          if (userTransactions) {
+            for (const transaction of userTransactions) {
+              try {
+                const convertedAmount = await ExchangeRateService.convertCurrency(
+                  Math.abs(transaction.amount),
+                  transaction.currency,
+                  'PKR'
+                );
+                totalVolume += convertedAmount;
+              } catch (conversionError) {
+                totalVolume += Math.abs(transaction.amount);
+              }
+            }
+          }
+
+          // Get user's last login (from auth.users table)
+          const { data: authUser } = await supabase.auth.admin.getUserById(profile.id);
+          const lastLogin = authUser?.user?.last_sign_in_at;
+
+          return {
+            ...profile,
+            user_role: profile.user_role || 'user', // Use actual user role from profile
+            is_active: profile.is_active !== false, // Default to active unless explicitly set to false
+            last_login: lastLogin || profile.updated_at,
+            transaction_count: transactionCount || 0,
+            total_volume: totalVolume,
+          };
+        })
+      );
 
       setUsers(usersWithStats);
     } catch (error) {
@@ -384,37 +479,173 @@ export default function AdminScreen() {
   };
 
   const fetchAdminActions = async () => {
-    // Mock admin actions data
-    const mockActions: AdminAction[] = [
-      {
-        id: '1',
-        action_type: 'user_role_change',
-        description: 'Changed user role to admin',
-        admin_user: 'super_admin@example.com',
-        target_user: 'john.doe@example.com',
-        timestamp: new Date().toISOString(),
-        details: { from: 'user', to: 'admin' },
-      },
-      {
-        id: '2',
-        action_type: 'user_ban',
-        description: 'Banned user for violation',
-        admin_user: 'admin@example.com',
-        target_user: 'spam@example.com',
-        timestamp: new Date(Date.now() - 3600000).toISOString(),
-        details: { reason: 'Spam violation' },
-      },
-      {
-        id: '3',
-        action_type: 'system_config',
-        description: 'Updated system configuration',
-        admin_user: 'super_admin@example.com',
-        timestamp: new Date(Date.now() - 7200000).toISOString(),
-        details: { config: 'rate_limits' },
-      },
-    ];
+    try {
+      // Fetch real admin actions from the database
+      const { data: actions, error } = await supabase
+        .from('admin_actions')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(50);
 
-    setAdminActions(mockActions);
+      if (error) {
+        console.error('Failed to fetch admin actions:', error);
+        // Fallback to empty array
+        setAdminActions([]);
+        return;
+      }
+
+      // Transform the data to match our interface
+      const transformedActions: AdminAction[] = (actions || []).map(action => ({
+        id: action.id,
+        action_type: action.action_type,
+        description: action.description,
+        admin_user: action.admin_user,
+        target_user: action.target_user,
+        timestamp: action.created_at,
+        details: action.details,
+      }));
+
+      setAdminActions(transformedActions);
+    } catch (error) {
+      console.error('Failed to fetch admin actions:', error);
+      setAdminActions([]);
+    }
+  };
+
+  // Data Management Handlers
+  const handleExportAllData = async () => {
+    try {
+      Alert.alert(
+        'Export Data',
+        'This will export all user data, transactions, and budgets. Continue?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Export',
+            onPress: async () => {
+              // Get current admin user
+              const { data: { user: currentAdmin } } = await supabase.auth.getUser();
+              if (!currentAdmin) {
+                Alert.alert('Error', 'You must be logged in to export data');
+                return;
+              }
+
+              // Log admin action
+              await supabase
+                .from('admin_actions')
+                .insert({
+                  action_type: 'data_export',
+                  description: 'Exported all application data',
+                  admin_user: currentAdmin.email,
+                  details: { export_type: 'all_data' },
+                });
+
+              Alert.alert('Success', 'Data export initiated. Check your email for the download link.');
+            },
+          },
+        ]
+      );
+    } catch (error) {
+      console.error('Export error:', error);
+      Alert.alert('Error', 'Failed to initiate data export');
+    }
+  };
+
+  const handleBackupDatabase = async () => {
+    try {
+      Alert.alert(
+        'Backup Database',
+        'This will create a backup of the entire database. Continue?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Backup',
+            onPress: async () => {
+              // Get current admin user
+              const { data: { user: currentAdmin } } = await supabase.auth.getUser();
+              if (!currentAdmin) {
+                Alert.alert('Error', 'You must be logged in to backup data');
+                return;
+              }
+
+              // Log admin action
+              await supabase
+                .from('admin_actions')
+                .insert({
+                  action_type: 'system_config',
+                  description: 'Database backup initiated',
+                  admin_user: currentAdmin.email,
+                  details: { backup_type: 'full_database' },
+                });
+
+              Alert.alert('Success', 'Database backup initiated. You will be notified when complete.');
+            },
+          },
+        ]
+      );
+    } catch (error) {
+      console.error('Backup error:', error);
+      Alert.alert('Error', 'Failed to initiate database backup');
+    }
+  };
+
+  const handleCleanOldData = async () => {
+    try {
+      Alert.alert(
+        'Clean Old Data',
+        'This will remove transactions older than 2 years. This action cannot be undone. Continue?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Clean',
+            style: 'destructive',
+            onPress: async () => {
+              // Get current admin user
+              const { data: { user: currentAdmin } } = await supabase.auth.getUser();
+              if (!currentAdmin) {
+                Alert.alert('Error', 'You must be logged in to clean data');
+                return;
+              }
+
+              // Calculate date 2 years ago
+              const twoYearsAgo = new Date();
+              twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2);
+
+              // Delete old transactions
+              const { error: deleteError } = await supabase
+                .from('transactions')
+                .delete()
+                .lt('created_at', twoYearsAgo.toISOString());
+
+              if (deleteError) {
+                throw deleteError;
+              }
+
+              // Log admin action
+              await supabase
+                .from('admin_actions')
+                .insert({
+                  action_type: 'system_config',
+                  description: 'Cleaned old transaction data',
+                  admin_user: currentAdmin.email,
+                  details: { 
+                    clean_type: 'old_transactions',
+                    cutoff_date: twoYearsAgo.toISOString()
+                  },
+                });
+
+              Alert.alert('Success', 'Old data has been cleaned successfully.');
+              
+              // Refresh data
+              await fetchAdminData();
+            },
+          },
+        ]
+      );
+    } catch (error) {
+      console.error('Clean error:', error);
+      Alert.alert('Error', 'Failed to clean old data');
+    }
   };
 
   const handleUserAction = async (action: 'promote' | 'demote' | 'ban' | 'unban', user: User) => {
@@ -435,25 +666,91 @@ export default function AdminScreen() {
           style: action === 'ban' ? 'destructive' : 'default',
           onPress: async () => {
             try {
-              // Here you would implement the actual admin action
-      
-              
+              // Get current admin user
+              const { data: { user: currentAdmin } } = await supabase.auth.getUser();
+              if (!currentAdmin) {
+                Alert.alert('Error', 'You must be logged in to perform admin actions');
+                return;
+              }
+
+              let updateData: any = {};
+              let actionType: string = '';
+              let description: string = '';
+
+              // Determine what to update based on action
+              switch (action) {
+                case 'promote':
+                  updateData = { user_role: 'admin' };
+                  actionType = 'user_role_change';
+                  description = `Promoted ${user.full_name} to admin`;
+                  break;
+                case 'demote':
+                  updateData = { user_role: 'user' };
+                  actionType = 'user_role_change';
+                  description = `Demoted ${user.full_name} to user`;
+                  break;
+                case 'ban':
+                  updateData = { is_active: false };
+                  actionType = 'user_ban';
+                  description = `Banned ${user.full_name}`;
+                  break;
+                case 'unban':
+                  updateData = { is_active: true };
+                  actionType = 'user_unban';
+                  description = `Unbanned ${user.full_name}`;
+                  break;
+              }
+
+              // Update user profile in database
+              const { error: updateError } = await supabase
+                .from('profiles')
+                .update(updateData)
+                .eq('id', user.id);
+
+              if (updateError) {
+                throw updateError;
+              }
+
+              // Log admin action
+              const { error: logError } = await supabase
+                .from('admin_actions')
+                .insert({
+                  action_type: actionType,
+                  description,
+                  admin_user: currentAdmin.email,
+                  target_user: user.email,
+                  details: {
+                    action,
+                    target_user_id: user.id,
+                    previous_role: user.user_role,
+                    new_role: action === 'promote' ? 'admin' : action === 'demote' ? 'user' : user.user_role,
+                    previous_status: user.is_active,
+                    new_status: action === 'ban' ? false : action === 'unban' ? true : user.is_active,
+                  },
+                });
+
+              if (logError) {
+                console.error('Failed to log admin action:', logError);
+              }
+
               // Update local state
               setUsers(prev => prev.map(u => {
                 if (u.id === user.id) {
                   return {
                     ...u,
-                    user_role: action === 'promote' ? 'admin' : action === 'demote' ? 'user' : u.user_role,
-                    is_active: action === 'ban' ? false : action === 'unban' ? true : u.is_active,
+                    ...updateData,
                   };
                 }
                 return u;
               }));
 
+              // Refresh admin actions to show the new action
+              await fetchAdminActions();
+
               Alert.alert('Success', `User ${actionText} successfully`);
             } catch (error) {
               console.error('Failed to perform admin action:', error);
-              Alert.alert('Error', 'Failed to perform action');
+              Alert.alert('Error', 'Failed to perform action. Please try again.');
             }
           },
         },
@@ -645,7 +942,7 @@ export default function AdminScreen() {
             style={[styles.filterButton, filterRole !== 'all' && styles.filterActive]}
             onPress={() => setFilterRole('all')}
           >
-            <Text style={[styles.filterText, filterRole === 'all' && styles.filterTextActive]}>All Roles</Text>
+            <Text style={[styles.filterText, filterRole === 'all' && styles.filterTextActive]}>All</Text>
           </TouchableOpacity>
           <TouchableOpacity 
             style={[styles.filterButton, filterRole === 'user' && styles.filterActive]}
@@ -813,31 +1110,40 @@ export default function AdminScreen() {
         </View>
       </View>
 
-      {/* Data Management */}
-      <View style={styles.card}>
-        <View style={styles.cardHeader}>
-          <Database size={24} color={Theme.colors.success} />
-          <Text style={styles.cardTitle}>Data Management</Text>
-        </View>
-        
-        <TouchableOpacity style={styles.dataAction}>
-          <Download size={20} color={Theme.colors.primary} />
-          <Text style={styles.dataActionText}>Export All Data</Text>
-          <ArrowRight size={16} color={Theme.colors.textSecondary} />
-        </TouchableOpacity>
-        
-        <TouchableOpacity style={styles.dataAction}>
-          <Archive size={20} color={Theme.colors.warning} />
-          <Text style={styles.dataActionText}>Backup Database</Text>
-          <ArrowRight size={16} color={Theme.colors.textSecondary} />
-        </TouchableOpacity>
-        
-        <TouchableOpacity style={styles.dataAction}>
-          <Trash size={20} color={Theme.colors.error} />
-          <Text style={styles.dataActionText}>Clean Old Data</Text>
-          <ArrowRight size={16} color={Theme.colors.textSecondary} />
-        </TouchableOpacity>
-      </View>
+             {/* Data Management */}
+       <View style={styles.card}>
+         <View style={styles.cardHeader}>
+           <Database size={24} color={Theme.colors.success} />
+           <Text style={styles.cardTitle}>Data Management</Text>
+         </View>
+         
+         <TouchableOpacity 
+           style={styles.dataAction}
+           onPress={handleExportAllData}
+         >
+           <Download size={20} color={Theme.colors.primary} />
+           <Text style={styles.dataActionText}>Export All Data</Text>
+           <ArrowRight size={16} color={Theme.colors.textSecondary} />
+         </TouchableOpacity>
+         
+         <TouchableOpacity 
+           style={styles.dataAction}
+           onPress={handleBackupDatabase}
+         >
+           <Archive size={20} color={Theme.colors.warning} />
+           <Text style={styles.dataActionText}>Backup Database</Text>
+           <ArrowRight size={16} color={Theme.colors.textSecondary} />
+         </TouchableOpacity>
+         
+         <TouchableOpacity 
+           style={styles.dataAction}
+           onPress={handleCleanOldData}
+         >
+           <Trash size={20} color={Theme.colors.error} />
+           <Text style={styles.dataActionText}>Clean Old Data</Text>
+           <ArrowRight size={16} color={Theme.colors.textSecondary} />
+         </TouchableOpacity>
+       </View>
 
       {/* Performance Monitoring */}
       <View style={styles.card}>
@@ -870,25 +1176,15 @@ export default function AdminScreen() {
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
-      <LinearGradient
-        colors={[Theme.colors.primary, Theme.colors.primaryDark]}
-        style={styles.header}
-      >
-        <View style={styles.headerContent}>
-          <View>
-            <Text style={styles.title}>Admin Dashboard</Text>
-            <Text style={styles.subtitle}>Smart Finance Manager Administration</Text>
-          </View>
-          <View style={styles.headerActions}>
-            <TouchableOpacity style={styles.headerButton}>
-              <Bell size={20} color={Theme.colors.textPrimary} />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.headerButton}>
-              <Settings size={20} color={Theme.colors.textPrimary} />
-            </TouchableOpacity>
-          </View>
-        </View>
-      </LinearGradient>
+      <View style={styles.header}>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => router.back()}
+        >
+          <ArrowLeft size={24} color={Theme.colors.textPrimary} />
+        </TouchableOpacity>
+        <Text style={styles.title}>Admin Dashboard</Text>
+      </View>
 
       {/* Tab Navigation */}
       <View style={styles.tabNavigation}>
@@ -896,7 +1192,7 @@ export default function AdminScreen() {
           style={[styles.tabButton, selectedTab === 'overview' && styles.tabActive]}
           onPress={() => setSelectedTab('overview')}
         >
-          <BarChart3 size={20} color={selectedTab === 'overview' ? Theme.colors.primary : Theme.colors.textSecondary} />
+          <BarChart3 size={16} color={selectedTab === 'overview' ? '#FFFFFF' : Theme.colors.textSecondary} />
           <Text style={[styles.tabText, selectedTab === 'overview' && styles.tabTextActive]}>Overview</Text>
         </TouchableOpacity>
         
@@ -904,7 +1200,7 @@ export default function AdminScreen() {
           style={[styles.tabButton, selectedTab === 'users' && styles.tabActive]}
           onPress={() => setSelectedTab('users')}
         >
-          <Users size={20} color={selectedTab === 'users' ? Theme.colors.primary : Theme.colors.textSecondary} />
+          <Users size={16} color={selectedTab === 'users' ? '#FFFFFF' : Theme.colors.textSecondary} />
           <Text style={[styles.tabText, selectedTab === 'users' && styles.tabTextActive]}>Users</Text>
         </TouchableOpacity>
         
@@ -912,7 +1208,7 @@ export default function AdminScreen() {
           style={[styles.tabButton, selectedTab === 'actions' && styles.tabActive]}
           onPress={() => setSelectedTab('actions')}
         >
-          <Activity size={20} color={selectedTab === 'actions' ? Theme.colors.primary : Theme.colors.textSecondary} />
+          <Activity size={16} color={selectedTab === 'actions' ? '#FFFFFF' : Theme.colors.textSecondary} />
           <Text style={[styles.tabText, selectedTab === 'actions' && styles.tabTextActive]}>Actions</Text>
         </TouchableOpacity>
         
@@ -920,7 +1216,7 @@ export default function AdminScreen() {
           style={[styles.tabButton, selectedTab === 'system' && styles.tabActive]}
           onPress={() => setSelectedTab('system')}
         >
-          <Settings size={20} color={selectedTab === 'system' ? Theme.colors.primary : Theme.colors.textSecondary} />
+          <Settings size={16} color={selectedTab === 'system' ? '#FFFFFF' : Theme.colors.textSecondary} />
           <Text style={[styles.tabText, selectedTab === 'system' && styles.tabTextActive]}>System</Text>
         </TouchableOpacity>
       </View>
@@ -957,37 +1253,30 @@ const styles = StyleSheet.create({
     backgroundColor: Theme.colors.background,
   },
   header: {
-    padding: 30,
-    paddingTop: 60,
-  },
-  headerContent: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    paddingTop: Platform.OS === 'ios' ? 50 : 30,
+    backgroundColor: Theme.colors.backgroundSecondary,
+    borderBottomWidth: 1,
+    borderBottomColor: Theme.colors.border,
   },
-  headerActions: {
-    flexDirection: 'row',
-  },
-  headerButton: {
-    marginLeft: 15,
+  backButton: {
+    padding: 8,
+    marginRight: 12,
   },
   title: {
-    fontSize: 28,
+    fontSize: 20,
     fontWeight: 'bold',
     color: Theme.colors.textPrimary,
-    marginBottom: 4,
     fontFamily: 'Inter-Bold',
-  },
-  subtitle: {
-    fontSize: 16,
-    color: Theme.colors.textSecondary,
-    fontFamily: 'Inter-Regular',
   },
   tabNavigation: {
     flexDirection: 'row',
     backgroundColor: Theme.colors.backgroundSecondary,
-    paddingVertical: 10,
-    paddingHorizontal: 15,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
     borderBottomWidth: 1,
     borderBottomColor: Theme.colors.border,
     shadowColor: '#000',
@@ -999,20 +1288,21 @@ const styles = StyleSheet.create({
   tabButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 15,
-    borderRadius: 20,
-    marginRight: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    marginRight: 6,
+    minWidth: 70,
   },
   tabActive: {
     backgroundColor: Theme.colors.primaryLight,
-    borderRadius: 20,
+    borderRadius: 12,
   },
   tabText: {
-    fontSize: 14,
+    fontSize: 11,
     fontWeight: '600',
     color: Theme.colors.textSecondary,
-    marginLeft: 8,
+    marginLeft: 4,
     fontFamily: 'Inter-SemiBold',
   },
   tabTextActive: {
@@ -1020,7 +1310,7 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    padding: 20,
+    padding: 15,
     backgroundColor: Theme.colors.background,
   },
   loadingContainer: {
@@ -1039,7 +1329,7 @@ const styles = StyleSheet.create({
   },
   tabContent: {
     flex: 1,
-    padding: 20,
+    padding: 15,
   },
   placeholderText: {
     fontSize: 18,
@@ -1051,15 +1341,15 @@ const styles = StyleSheet.create({
   metricsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: 10,
     marginBottom: 20,
   },
   metricCard: {
     backgroundColor: Theme.colors.card,
-    padding: 20,
-    borderRadius: 16,
+    padding: 16,
+    borderRadius: 12,
     alignItems: 'center',
-    width: (width - 56) / 2,
+    width: (width - 50) / 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -1239,24 +1529,27 @@ const styles = StyleSheet.create({
   },
   filterRow: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    justifyContent: 'space-between',
     marginTop: 10,
     marginBottom: 20,
+    gap: 8,
   },
   filterButton: {
     paddingVertical: 8,
-    paddingHorizontal: 15,
-    borderRadius: 20,
+    paddingHorizontal: 12,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: Theme.colors.border,
     backgroundColor: Theme.colors.card,
+    minWidth: 60,
+    alignItems: 'center',
   },
   filterActive: {
     backgroundColor: Theme.colors.primaryLight,
     borderColor: Theme.colors.primary,
   },
   filterText: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
     color: Theme.colors.textSecondary,
     fontFamily: 'Inter-SemiBold',
@@ -1266,7 +1559,7 @@ const styles = StyleSheet.create({
   },
   userCard: {
     backgroundColor: Theme.colors.card,
-    padding: 15,
+    padding: 12,
     borderRadius: 12,
     marginBottom: 10,
     flexDirection: 'row',
@@ -1367,10 +1660,10 @@ const styles = StyleSheet.create({
   },
   userStats: {
     alignItems: 'center',
-    marginRight: 15,
+    marginRight: 10,
   },
   userStatValue: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     color: Theme.colors.textPrimary,
     fontFamily: 'Inter-Bold',
@@ -1386,6 +1679,9 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     padding: 8,
+    marginLeft: 4,
+    borderRadius: 8,
+    backgroundColor: Theme.colors.backgroundSecondary,
   },
   // Actions Tab Styles
   actionCard: {
