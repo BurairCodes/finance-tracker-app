@@ -32,7 +32,7 @@ import { useProfile } from '@/hooks/useProfile';
 import AuthScreen from '@/components/AuthScreen';
 import ProfileModal from '@/components/ProfileModal';
 import ChangePasswordModal from '@/components/ChangePasswordModal';
-import CurrencySettingsModal from '@/components/CurrencySettingsModal';
+
 import { PDFService } from '@/services/pdfService';
 import { ExportService } from '@/services/exportService';
 import { ExchangeRateService } from '@/services/exchangeRateService';
@@ -49,7 +49,6 @@ export default function SettingsScreen() {
   const { transactions } = useTransactions(user?.id);
   const { budgets } = useBudgets(user?.id);
   const [showProfileModal, setShowProfileModal] = useState(false);
-  const [showCurrencyModal, setShowCurrencyModal] = useState(false);
   const [showNotificationModal, setShowNotificationModal] = useState(false);
   const [showSecurityModal, setShowSecurityModal] = useState(false);
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
@@ -164,7 +163,30 @@ export default function SettingsScreen() {
       }
       // Refresh profile data to ensure UI updates
       await refetch();
-      Alert.alert('Success', 'Profile updated successfully!');
+      
+             // Show success message with currency change notification if applicable
+       if (updates.base_currency) {
+         Alert.alert(
+           'Success', 
+           `Profile updated successfully! Your base currency has been changed to ${updates.base_currency}. All amounts will now be displayed in ${updates.base_currency}.`,
+           [
+             { 
+               text: 'Restart App', 
+               onPress: () => {
+                 // In a real app, you might want to trigger an app restart
+                 Alert.alert(
+                   'Restart Required',
+                   'Please restart the app for all currency changes to take effect across all screens.',
+                   [{ text: 'OK' }]
+                 );
+               }
+             },
+             { text: 'OK' }
+           ]
+         );
+       } else {
+         Alert.alert('Success', 'Profile updated successfully!');
+       }
     } catch (error) {
       console.error('Profile update error:', error);
       Alert.alert('Error', 'Failed to update profile. Please try again.');
@@ -177,7 +199,8 @@ export default function SettingsScreen() {
   };
 
   const handleCurrencySettings = () => {
-    setShowCurrencyModal(true);
+    // Currency settings are now handled in the Profile tab
+    setShowProfileModal(true);
   };
 
   const handle2FASettings = () => {
@@ -230,7 +253,7 @@ export default function SettingsScreen() {
     },
     {
       title: 'Currency',
-      subtitle: 'Set your default currency',
+      subtitle: 'Set your default currency (via Profile)',
       icon: Globe,
       onPress: handleCurrencySettings,
     },
@@ -349,11 +372,7 @@ export default function SettingsScreen() {
         profile={profile}
       />
 
-      <CurrencySettingsModal
-        visible={showCurrencyModal}
-        onClose={() => setShowCurrencyModal(false)}
-        userId={user?.id || ''}
-      />
+
 
       <ChangePasswordModal
         visible={showChangePasswordModal}

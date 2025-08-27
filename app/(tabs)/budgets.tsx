@@ -42,9 +42,6 @@ export default function BudgetsScreen() {
     const currentMonth = new Date().getMonth();
     const currentYear = new Date().getFullYear();
     
-    // Get user's base currency, default to PKR if not set
-    const userBaseCurrency = profile?.base_currency || 'PKR';
-    
     const spending: Record<string, number> = {};
 
     for (const budget of budgets) {
@@ -58,30 +55,28 @@ export default function BudgetsScreen() {
 
       let totalSpent = 0;
       for (const transaction of categoryTransactions) {
-        // Convert transaction amount to user's base currency for comparison
-        const convertedAmount = await ExchangeRateService.convertCurrency(
-          Math.abs(transaction.amount),
-          transaction.currency,
-          userBaseCurrency
-        );
-        totalSpent += convertedAmount;
+        // Only convert if transaction currency is different from budget currency
+        if (transaction.currency === budget.currency) {
+          totalSpent += Math.abs(transaction.amount);
+        } else {
+          // Convert transaction to budget currency for comparison
+          const convertedAmount = await ExchangeRateService.convertCurrency(
+            Math.abs(transaction.amount),
+            transaction.currency,
+            budget.currency
+          );
+          totalSpent += convertedAmount;
+        }
       }
-
-      // Convert budget amount to user's base currency for comparison
-      const budgetAmountInBaseCurrency = await ExchangeRateService.convertCurrency(
-        budget.amount,
-        budget.currency,
-        userBaseCurrency
-      );
 
       spending[budget.category] = totalSpent;
       
-      // Check for budget alerts using base currency
+      // Check for budget alerts using budget currency
       await NotificationService.scheduleBudgetAlert(
         budget.category,
         totalSpent,
-        budgetAmountInBaseCurrency,
-        userBaseCurrency
+        budget.amount,
+        budget.currency
       );
     }
 

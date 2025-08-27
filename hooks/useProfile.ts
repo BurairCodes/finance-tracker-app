@@ -69,12 +69,12 @@ export function useProfile(userId: string | undefined) {
         console.warn('Supabase environment variables not found, using fallback configuration');
       }
 
-      // Validate required fields
-      if (!updates.full_name?.trim()) {
+      // Validate required fields only if they are being updated
+      if (updates.full_name !== undefined && !updates.full_name?.trim()) {
         throw new Error('Full name is required');
       }
 
-      if (!updates.base_currency) {
+      if (updates.base_currency !== undefined && !updates.base_currency) {
         throw new Error('Base currency is required');
       }
 

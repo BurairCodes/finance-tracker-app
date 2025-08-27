@@ -171,7 +171,19 @@ export default function ProfileModal({
 
           <View style={styles.infoBox}>
             <Text style={styles.infoText}>
-              Your base currency is used for analytics and reporting. All transactions will be converted to this currency for calculations.
+              💱 Your base currency is used for analytics and reporting. All transactions will be converted to this currency for calculations.
+            </Text>
+          </View>
+
+          <View style={styles.currencyNote}>
+            <Text style={styles.currencyNoteText}>
+              💡 Tip: You can also access currency settings from the Currency tab in Settings.
+            </Text>
+          </View>
+
+          <View style={styles.restartNote}>
+            <Text style={styles.restartNoteText}>
+              ⚠️ Note: After changing your base currency, you may need to restart the app for all changes to take effect across all screens.
             </Text>
           </View>
         </ScrollView>
@@ -270,6 +282,34 @@ const styles = StyleSheet.create({
   infoText: {
     fontSize: 14,
     color: Theme.colors.info,
+    lineHeight: 20,
+    fontFamily: Theme.typography.fontFamily.regular,
+  },
+  currencyNote: {
+    backgroundColor: 'rgba(139, 92, 246, 0.1)',
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(139, 92, 246, 0.2)',
+    marginTop: 16,
+  },
+  currencyNoteText: {
+    fontSize: 14,
+    color: Theme.colors.primary,
+    lineHeight: 20,
+    fontFamily: Theme.typography.fontFamily.regular,
+  },
+  restartNote: {
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.2)',
+    marginTop: 16,
+  },
+  restartNoteText: {
+    fontSize: 14,
+    color: '#F59E0B',
     lineHeight: 20,
     fontFamily: Theme.typography.fontFamily.regular,
   },

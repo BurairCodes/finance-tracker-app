@@ -147,9 +147,9 @@ export default function AnalyticsScreen() {
                 <TrendingUp size={24} color="#2563EB" />
                 <Text style={styles.cardTitle}>Monthly Forecast</Text>
               </View>
-              <Text style={styles.forecastAmount}>
-                {ExchangeRateService.formatCurrency(forecast, 'PKR')}
-              </Text>
+                             <Text style={styles.forecastAmount}>
+                 {ExchangeRateService.formatCurrency(forecast, profile?.base_currency || 'PKR')}
+               </Text>
               <Text style={styles.forecastSubtext}>
                 Predicted expenses for next month
               </Text>
@@ -177,9 +177,9 @@ export default function AnalyticsScreen() {
                         <Text style={styles.categoryName}>{item.category}</Text>
                       </View>
                       <View style={styles.categoryStats}>
-                        <Text style={styles.categoryAmount}>
-                          {ExchangeRateService.formatCurrency(item.amount, 'PKR')}
-                        </Text>
+                                                 <Text style={styles.categoryAmount}>
+                           {ExchangeRateService.formatCurrency(item.amount, profile?.base_currency || 'PKR')}
+                         </Text>
                         <Text style={styles.categoryPercentage}>
                           {item.percentage.toFixed(1)}%
                         </Text>
