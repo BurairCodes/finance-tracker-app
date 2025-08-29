@@ -58,6 +58,13 @@ export default function BudgetModal({ visible, onClose, onSave, existingCategori
       return;
     }
 
+    // Validate currency
+    const validCurrencies = CURRENCIES.map(c => c.code);
+    if (!validCurrencies.includes(formData.currency)) {
+      Alert.alert('Error', 'Please select a valid currency');
+      return;
+    }
+
     const amount = parseFloat(formData.amount);
 
     if (existingCategories.includes(formData.category)) {

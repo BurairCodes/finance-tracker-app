@@ -32,18 +32,21 @@ export default function BudgetsScreen() {
   const { budgets, loading, addBudget, deleteBudget } = useBudgets(user?.id);
   const [showAddModal, setShowAddModal] = useState(false);
   const [budgetSpending, setBudgetSpending] = useState<Record<string, number>>({});
+  const [calculatingSpending, setCalculatingSpending] = useState(false);
 
   useEffect(() => {
     calculateBudgetSpending();
     NotificationService.requestPermissions();
-  }, [budgets, transactions]);
+  }, [budgets, transactions, profile]);
 
   const calculateBudgetSpending = async () => {
+    setCalculatingSpending(true);
     const currentMonth = new Date().getMonth();
     const currentYear = new Date().getFullYear();
     
     const spending: Record<string, number> = {};
 
+    // Process budgets sequentially to avoid rate limiting
     for (const budget of budgets) {
       const categoryTransactions = transactions.filter(t => {
         const transactionDate = new Date(t.date);
@@ -54,33 +57,46 @@ export default function BudgetsScreen() {
       });
 
       let totalSpent = 0;
+      
+      // Process transactions sequentially to avoid API rate limiting
       for (const transaction of categoryTransactions) {
-        // Only convert if transaction currency is different from budget currency
-        if (transaction.currency === budget.currency) {
+        try {
+          // Only convert if transaction currency is different from budget currency
+          if (transaction.currency === budget.currency) {
+            totalSpent += Math.abs(transaction.amount);
+          } else {
+            // Convert transaction to budget currency for comparison
+            const convertedAmount = await ExchangeRateService.convertCurrency(
+              Math.abs(transaction.amount),
+              transaction.currency,
+              budget.currency
+            );
+            totalSpent += convertedAmount;
+          }
+        } catch (error) {
+          console.error(`Currency conversion error for transaction ${transaction.id}:`, error);
+          // Fallback: use original amount if conversion fails
           totalSpent += Math.abs(transaction.amount);
-        } else {
-          // Convert transaction to budget currency for comparison
-          const convertedAmount = await ExchangeRateService.convertCurrency(
-            Math.abs(transaction.amount),
-            transaction.currency,
-            budget.currency
-          );
-          totalSpent += convertedAmount;
         }
       }
 
       spending[budget.category] = totalSpent;
       
       // Check for budget alerts using budget currency
-      await NotificationService.scheduleBudgetAlert(
-        budget.category,
-        totalSpent,
-        budget.amount,
-        budget.currency
-      );
+      try {
+        await NotificationService.scheduleBudgetAlert(
+          budget.category,
+          totalSpent,
+          budget.amount,
+          budget.currency
+        );
+      } catch (error) {
+        console.error(`Budget alert error for ${budget.category}:`, error);
+      }
     }
 
     setBudgetSpending(spending);
+    setCalculatingSpending(false);
   };
 
   const handleAddBudget = async (budgetData: {
@@ -119,6 +135,14 @@ export default function BudgetsScreen() {
     return { status: 'good', color: '#059669', icon: CheckCircle };
   };
 
+  const formatAmountInBaseCurrency = (amount: number, currency: string) => {
+    const userBaseCurrency = profile?.base_currency || 'PKR';
+    if (currency === userBaseCurrency) {
+      return ExchangeRateService.formatCurrency(amount, currency);
+    }
+    return `${ExchangeRateService.formatCurrency(amount, currency)} (${userBaseCurrency})`;
+  };
+
   if (!user) {
     return <AuthScreen />;
   }
@@ -138,6 +162,8 @@ export default function BudgetsScreen() {
       <ScrollView style={styles.budgetsList}>
         {loading ? (
           <Text style={styles.loadingText}>Loading budgets...</Text>
+        ) : calculatingSpending ? (
+          <Text style={styles.loadingText}>Calculating spending...</Text>
         ) : budgets.length === 0 ? (
           <View style={styles.emptyState}>
             <Target size={48} color="#9CA3AF" />
@@ -195,6 +221,12 @@ export default function BudgetsScreen() {
                     budget.currency
                   )}
                 </Text>
+                
+                {budget.currency !== (profile?.base_currency || 'PKR') && (
+                  <Text style={styles.currencyNote}>
+                    Budget in {budget.currency} - amounts shown in budget currency
+                  </Text>
+                )}
               </TouchableOpacity>
             );
           })
@@ -344,5 +376,13 @@ const styles = StyleSheet.create({
     color: Theme.colors.success,
     textAlign: 'center',
     fontFamily: Theme.typography.fontFamily.semiBold,
+  },
+  currencyNote: {
+    fontSize: Theme.typography.fontSize.xs,
+    color: Theme.colors.textTertiary,
+    textAlign: 'center',
+    marginTop: Theme.spacing.sm,
+    fontFamily: Theme.typography.fontFamily.regular,
+    fontStyle: 'italic',
   },
 });

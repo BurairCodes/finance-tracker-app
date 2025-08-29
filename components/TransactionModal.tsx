@@ -90,6 +90,13 @@ export default function TransactionModal({ visible, onClose, onSave, initialData
       return;
     }
 
+    // Validate currency
+    const validCurrencies = CURRENCIES.map(c => c.code);
+    if (!validCurrencies.includes(formData.currency)) {
+      Alert.alert('Error', 'Please select a valid currency');
+      return;
+    }
+
     const amount = parseFloat(formData.amount);
     
     // Use AI categorization to determine category if not provided

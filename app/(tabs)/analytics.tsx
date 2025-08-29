@@ -32,7 +32,7 @@ export default function AnalyticsScreen() {
     if (transactions.length > 0) {
       analyzeTransactions();
     }
-  }, [transactions]);
+  }, [transactions, profile]);
 
   const analyzeTransactions = async () => {
     // Category breakdown for current month
@@ -53,14 +53,21 @@ export default function AnalyticsScreen() {
     let totalExpenses = 0;
 
     for (const transaction of monthlyExpenses) {
-      const convertedAmount = await ExchangeRateService.convertCurrency(
-        Math.abs(transaction.amount),
-        transaction.currency,
-        userBaseCurrency
-      );
-      
-      categoryTotals[transaction.category] = (categoryTotals[transaction.category] || 0) + convertedAmount;
-      totalExpenses += convertedAmount;
+      try {
+        const convertedAmount = await ExchangeRateService.convertCurrency(
+          Math.abs(transaction.amount),
+          transaction.currency,
+          userBaseCurrency
+        );
+        
+        categoryTotals[transaction.category] = (categoryTotals[transaction.category] || 0) + convertedAmount;
+        totalExpenses += convertedAmount;
+      } catch (error) {
+        console.error(`Currency conversion error for transaction ${transaction.id}:`, error);
+        // Fallback: use original amount if conversion fails
+        categoryTotals[transaction.category] = (categoryTotals[transaction.category] || 0) + Math.abs(transaction.amount);
+        totalExpenses += Math.abs(transaction.amount);
+      }
     }
 
     const categoryArray = Object.entries(categoryTotals)
@@ -92,12 +99,18 @@ export default function AnalyticsScreen() {
         const monthKey = `${transactionDate.getFullYear()}-${transactionDate.getMonth()}`;
         
         if (monthlyData.hasOwnProperty(monthKey)) {
-          const convertedAmount = await ExchangeRateService.convertCurrency(
-            Math.abs(transaction.amount),
-            transaction.currency,
-            userBaseCurrency
-          );
-          monthlyData[monthKey] += convertedAmount;
+          try {
+            const convertedAmount = await ExchangeRateService.convertCurrency(
+              Math.abs(transaction.amount),
+              transaction.currency,
+              userBaseCurrency
+            );
+            monthlyData[monthKey] += convertedAmount;
+          } catch (error) {
+            console.error(`Currency conversion error for transaction ${transaction.id}:`, error);
+            // Fallback: use original amount if conversion fails
+            monthlyData[monthKey] += Math.abs(transaction.amount);
+          }
         }
       }
     }

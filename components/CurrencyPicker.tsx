@@ -17,10 +17,14 @@ export default function CurrencyPicker({
   style,
   disabled = false
 }: CurrencyPickerProps) {
+  // Ensure selectedCurrency is valid, fallback to first available currency
+  const validCurrencies = CURRENCIES.map(c => c.code);
+  const currentCurrency = validCurrencies.includes(selectedCurrency) ? selectedCurrency : CURRENCIES[0]?.code || 'PKR';
+
   return (
     <View style={[styles.container, style, disabled && styles.disabled]}>
       <Picker
-        selectedValue={selectedCurrency}
+        selectedValue={currentCurrency}
         onValueChange={onCurrencyChange}
         style={[styles.picker, disabled && styles.pickerDisabled]}
         dropdownIconColor="#FFFFFF"

@@ -39,10 +39,19 @@ export default function DashboardScreen() {
     expenses: 0,
     savings: 0,
   });
+  const [budgetAlerts, setBudgetAlerts] = useState<any[]>([]);
 
   useEffect(() => {
     calculateMonthlyStats();
-  }, [transactions]);
+  }, [transactions, profile]);
+
+  useEffect(() => {
+    const loadBudgetAlerts = async () => {
+      const alerts = await getBudgetAlerts();
+      setBudgetAlerts(alerts);
+    };
+    loadBudgetAlerts();
+  }, [budgets, transactions, profile]);
 
   const calculateMonthlyStats = async () => {
     const currentMonth = new Date().getMonth();
@@ -61,17 +70,27 @@ export default function DashboardScreen() {
     let totalExpenses = 0;
 
     for (const transaction of monthlyTransactions) {
-      // Convert to user's base currency for consistent calculations
-      const convertedAmount = await ExchangeRateService.convertCurrency(
-        Math.abs(transaction.amount),
-        transaction.currency,
-        userBaseCurrency
-      );
+      try {
+        // Convert to user's base currency for consistent calculations
+        const convertedAmount = await ExchangeRateService.convertCurrency(
+          Math.abs(transaction.amount),
+          transaction.currency,
+          userBaseCurrency
+        );
 
-      if (transaction.type === 'income') {
-        totalIncome += convertedAmount;
-      } else {
-        totalExpenses += convertedAmount;
+        if (transaction.type === 'income') {
+          totalIncome += convertedAmount;
+        } else {
+          totalExpenses += convertedAmount;
+        }
+      } catch (error) {
+        console.error(`Currency conversion error for transaction ${transaction.id}:`, error);
+        // Fallback: use original amount if conversion fails
+        if (transaction.type === 'income') {
+          totalIncome += Math.abs(transaction.amount);
+        } else {
+          totalExpenses += Math.abs(transaction.amount);
+        }
       }
     }
 
@@ -115,23 +134,48 @@ export default function DashboardScreen() {
       }
   };
 
-  const getBudgetAlerts = () => {
+  const getBudgetAlerts = async () => {
     const currentMonth = new Date().getMonth();
     const currentYear = new Date().getFullYear();
     
-    return budgets.filter(budget => {
-      const categoryExpenses = transactions
-        .filter(t => {
-          const transactionDate = new Date(t.date);
-          return t.type === 'expense' &&
-                 t.category === budget.category &&
-                 transactionDate.getMonth() === currentMonth &&
-                 transactionDate.getFullYear() === currentYear;
-        })
-        .reduce((sum, t) => sum + Math.abs(t.amount), 0);
+    const alerts = [];
+    
+    for (const budget of budgets) {
+      const categoryTransactions = transactions.filter(t => {
+        const transactionDate = new Date(t.date);
+        return t.type === 'expense' &&
+               t.category === budget.category &&
+               transactionDate.getMonth() === currentMonth &&
+               transactionDate.getFullYear() === currentYear;
+      });
+
+      let totalSpent = 0;
       
-      return categoryExpenses > budget.amount * 0.8; // Alert at 80% of budget
-    });
+      for (const transaction of categoryTransactions) {
+        try {
+          if (transaction.currency === budget.currency) {
+            totalSpent += Math.abs(transaction.amount);
+          } else {
+            const convertedAmount = await ExchangeRateService.convertCurrency(
+              Math.abs(transaction.amount),
+              transaction.currency,
+              budget.currency
+            );
+            totalSpent += convertedAmount;
+          }
+        } catch (error) {
+          console.error(`Currency conversion error for budget alert:`, error);
+          // Fallback: use original amount
+          totalSpent += Math.abs(transaction.amount);
+        }
+      }
+      
+      if (totalSpent > budget.amount * 0.8) {
+        alerts.push(budget);
+      }
+    }
+    
+    return alerts;
   };
 
   if (authLoading) {
@@ -143,8 +187,6 @@ export default function DashboardScreen() {
   if (!user) {
     return <AuthScreen />;
   }
-
-  const budgetAlerts = getBudgetAlerts();
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>

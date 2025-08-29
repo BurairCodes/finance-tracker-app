@@ -12,7 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Picker } from '@react-native-picker/picker';
 import { X } from 'lucide-react-native';
-import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '@/constants/Categories';
+import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, CURRENCIES } from '@/constants/Categories';
 import CurrencyPicker from './CurrencyPicker';
 import { ValidationUtils } from '@/utils/validation';
 import { Database } from '@/types/database';
@@ -71,6 +71,13 @@ export default function EditTransactionModal({
 
     if (!ValidationUtils.isValidDate(formData.date)) {
       Alert.alert('Error', 'Please enter a valid date');
+      return;
+    }
+
+    // Validate currency
+    const validCurrencies = CURRENCIES.map(c => c.code);
+    if (!validCurrencies.includes(formData.currency)) {
+      Alert.alert('Error', 'Please select a valid currency');
       return;
     }
 

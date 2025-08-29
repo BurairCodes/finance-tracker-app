@@ -151,20 +151,16 @@ export default function ReceiptScanner({ isVisible, onClose }: ReceiptScannerPro
     date: string;
   }) => {
     try {
-      const transaction = {
-        id: Date.now().toString(),
+      // Remove the manual transaction object creation and let the addTransaction hook handle it
+      await addTransaction({
         amount: transactionData.amount,
         description: transactionData.description,
         category: transactionData.category,
         type: transactionData.type,
         date: transactionData.date,
         currency: transactionData.currency || 'PKR',
-        userId: user?.id || '',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-
-      await addTransaction(transaction);
+      });
+      
       Alert.alert('Success', 'Transaction added successfully!');
       handleClose();
     } catch (error) {

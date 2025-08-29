@@ -40,16 +40,37 @@ export class ExchangeRateService {
     } catch (error) {
       console.error('Failed to fetch exchange rates:', error);
       // Return fallback rates if API fails
+      const fallbackRates: Record<string, number> = {};
+      
+      // Add all supported currencies with reasonable fallback rates
+      const supportedCurrencies = ['PKR', 'USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD', 'CHF', 'CNY', 'INR', 'BRL'];
+      
+      for (const currency of supportedCurrencies) {
+        if (currency === baseCurrency) {
+          fallbackRates[currency] = 1;
+        } else {
+          // Use approximate rates as fallback
+          switch (currency) {
+            case 'PKR': fallbackRates[currency] = baseCurrency === 'USD' ? 280 : 0.0036; break;
+            case 'USD': fallbackRates[currency] = baseCurrency === 'PKR' ? 0.0036 : 1; break;
+            case 'EUR': fallbackRates[currency] = 0.85; break;
+            case 'GBP': fallbackRates[currency] = 0.73; break;
+            case 'JPY': fallbackRates[currency] = 110; break;
+            case 'CAD': fallbackRates[currency] = 1.35; break;
+            case 'AUD': fallbackRates[currency] = 1.52; break;
+            case 'CHF': fallbackRates[currency] = 0.92; break;
+            case 'CNY': fallbackRates[currency] = 7.2; break;
+            case 'INR': fallbackRates[currency] = 83; break;
+            case 'BRL': fallbackRates[currency] = 5.2; break;
+            default: fallbackRates[currency] = 1; break;
+          }
+        }
+      }
+      
       return {
         base: baseCurrency,
         date: new Date().toISOString().split('T')[0],
-        rates: { 
-          PKR: baseCurrency === 'PKR' ? 1 : 280,
-          USD: baseCurrency === 'USD' ? 1 : 0.0036,
-          EUR: 0.85, 
-          GBP: 0.73, 
-          JPY: 110 
-        }
+        rates: fallbackRates
       };
     }
   }

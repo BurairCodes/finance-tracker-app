@@ -23,6 +23,11 @@ export class ValidationUtils {
     return input.trim().replace(/[<>]/g, '');
   }
 
+  static isValidCurrency(currency: string): boolean {
+    const validCurrencies = ['PKR', 'USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD', 'CHF', 'CNY', 'INR', 'BRL'];
+    return validCurrencies.includes(currency);
+  }
+
   static formatCurrency(amount: number, currency: string): string {
     // Always use fallback to avoid Intl.NumberFormat issues in React Native
     const symbols: Record<string, string> = {
@@ -34,6 +39,9 @@ export class ValidationUtils {
       INR: '₹',
       CAD: 'C$',
       AUD: 'A$',
+      CHF: 'Fr',
+      CNY: '¥',
+      BRL: 'R$',
     };
     const symbol = symbols[currency] || currency;
     return `${symbol}${amount.toFixed(2)}`;
