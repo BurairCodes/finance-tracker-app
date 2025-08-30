@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
+import { Platform } from 'react-native';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { OAuthUtils } from '@/utils/oauth';
+import { NotificationService } from '@/services/notificationService';
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
@@ -15,9 +17,24 @@ export function useAuth() {
     });
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      const previousUser = user;
       setUser(session?.user ?? null);
       setLoading(false);
+      
+      // Security alerts for suspicious activities
+      if (session?.user && previousUser?.id !== session.user.id) {
+        try {
+          // New login detected
+          await NotificationService.createSecurityAlert(
+            session.user.id,
+            'login',
+            `New login detected from ${Platform.OS} device. If this wasn't you, please review your account security.`
+          );
+        } catch (error) {
+          console.error('Failed to create security alert:', error);
+        }
+      }
     });
 
     // Set up OAuth redirect listener

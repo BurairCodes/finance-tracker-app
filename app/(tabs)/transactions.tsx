@@ -25,6 +25,7 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { useTransactions } from '@/hooks/useTransactions';
 import { ExchangeRateService } from '@/services/exchangeRateService';
+import { NotificationService } from '@/services/notificationService';
 import AuthScreen from '@/components/AuthScreen';
 import TransactionModal from '@/components/TransactionModal';
 import EditTransactionModal from '@/components/EditTransactionModal';
@@ -57,6 +58,27 @@ export default function TransactionsScreen() {
 
     if (error) {
       throw new Error(error);
+    }
+
+    // Check if this transaction might be a bill payment
+    if (transactionData.type === 'expense' && transactionData.description) {
+      const billKeywords = ['bill', 'payment', 'subscription', 'rent', 'mortgage', 'insurance', 'utility'];
+      const isBillPayment = billKeywords.some(keyword => 
+        transactionData.description.toLowerCase().includes(keyword)
+      );
+      
+      if (isBillPayment) {
+        try {
+          await NotificationService.createNotification(
+            user!.id,
+            'bill',
+            '💳 Bill Payment Recorded',
+            `Payment of ${transactionData.currency} ${transactionData.amount} for ${transactionData.category} has been recorded.`
+          );
+        } catch (error) {
+          console.error('Failed to create bill notification:', error);
+        }
+      }
     }
   };
 

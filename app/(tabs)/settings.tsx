@@ -32,6 +32,8 @@ import { useProfile } from '@/hooks/useProfile';
 import AuthScreen from '@/components/AuthScreen';
 import ProfileModal from '@/components/ProfileModal';
 import ChangePasswordModal from '@/components/ChangePasswordModal';
+import NotificationsList from '@/components/NotificationsList';
+import { NotificationService } from '@/services/notificationService';
 
 import { PDFService } from '@/services/pdfService';
 import { ExportService } from '@/services/exportService';
@@ -94,6 +96,18 @@ export default function SettingsScreen() {
         },
       ]
     );
+  };
+
+
+
+  const handleClearAllNotifications = async () => {
+    try {
+      // This will be handled by the NotificationsList component
+      // We just need to close the modal and refresh
+      setShowNotificationModal(false);
+    } catch (error) {
+      console.error('Failed to clear notifications:', error);
+    }
   };
 
   const handleExportData = async () => {
@@ -353,6 +367,8 @@ export default function SettingsScreen() {
           ))}
         </View>
 
+
+
         {/* Sign Out */}
         <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
           <LogOut size={20} color="#DC2626" />
@@ -379,7 +395,7 @@ export default function SettingsScreen() {
         onClose={() => setShowChangePasswordModal(false)}
       />
 
-      {/* Notification Settings Modal */}
+      {/* Notifications Page */}
       <Modal
         visible={showNotificationModal}
         animationType="slide"
@@ -390,47 +406,11 @@ export default function SettingsScreen() {
             <TouchableOpacity onPress={() => setShowNotificationModal(false)}>
               <ChevronLeft size={24} color={Theme.colors.textSecondary} />
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>Notification Settings</Text>
+            <Text style={styles.modalTitle}>Notifications</Text>
             <View style={{ width: 24 }} />
           </View>
 
-          <ScrollView style={styles.modalContent}>
-            <View style={styles.settingItem}>
-              <View style={styles.settingInfo}>
-                <Text style={styles.settingName}>Budget Alerts</Text>
-                <Text style={styles.settingDescription}>
-                  Get notified when you approach or exceed your budget limits
-                </Text>
-              </View>
-              <TouchableOpacity
-                style={[styles.toggle, notificationSettings.budgetAlerts && styles.toggleActive]}
-                onPress={() => handleNotificationToggle('budgetAlerts')}
-              >
-                <View style={[styles.toggleThumb, notificationSettings.budgetAlerts && styles.toggleThumbActive]} />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.settingItem}>
-              <View style={styles.settingInfo}>
-                <Text style={styles.settingName}>Daily Summary</Text>
-                <Text style={styles.settingDescription}>
-                  Receive daily spending summaries and insights
-                </Text>
-              </View>
-              <TouchableOpacity
-                style={[styles.toggle, notificationSettings.dailySummary && styles.toggleActive]}
-                onPress={() => handleNotificationToggle('dailySummary')}
-              >
-                <View style={[styles.toggleThumb, notificationSettings.dailySummary && styles.toggleThumbActive]} />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.infoBox}>
-              <Text style={styles.infoText}>
-                These settings control your notification preferences. Changes are saved automatically.
-              </Text>
-            </View>
-          </ScrollView>
+          <NotificationsList />
         </SafeAreaView>
       </Modal>
 
@@ -739,4 +719,11 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     fontFamily: Theme.typography.fontFamily.regular,
   },
+  clearAllText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Theme.colors.primary,
+    fontFamily: 'Inter-SemiBold',
+  },
+
 });

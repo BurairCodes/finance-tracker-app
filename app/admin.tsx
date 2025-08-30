@@ -289,6 +289,9 @@ export default function AdminScreen() {
 
   const fetchAdminStats = async () => {
     try {
+      // Check exchange rate API status
+      const exchangeRateStatus = await ExchangeRateService.checkAPIStatus();
+      
       // Fetch user count
       const { count: userCount } = await supabase
         .from('profiles')
@@ -411,6 +414,10 @@ export default function AdminScreen() {
         topCategories,
         currencyDistribution,
         recentActivity,
+        systemHealth: {
+          ...prev.systemHealth,
+          exchangeRate: exchangeRateStatus.status,
+        },
       }));
     } catch (error) {
       console.error('Failed to fetch admin stats:', error);

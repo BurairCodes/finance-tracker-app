@@ -87,6 +87,25 @@ export function useTransactions(userId: string | undefined) {
         throw error;
       }
       
+      // Create a welcome notification for the first transaction
+      try {
+        const { count } = await supabase
+          .from('transactions')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', userId);
+        
+        if (count === 1) {
+          await NotificationService.createNotification(
+            userId,
+            'insight',
+            '🎉 First Transaction Added!',
+            'Great! You\'ve started tracking your finances. Add more transactions to see spending patterns and insights.'
+          );
+        }
+      } catch (notificationError) {
+        console.error('Failed to create transaction notification:', notificationError);
+      }
+      
       setTransactions(prev => [data, ...prev]);
       setError(null);
       return { data, error: null };

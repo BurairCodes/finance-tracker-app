@@ -97,6 +97,38 @@ export interface Database {
           updated_at?: string;
         };
       };
+      notifications: {
+        Row: {
+          id: string;
+          user_id: string;
+          type: 'budget' | 'bill' | 'insight' | 'security';
+          title: string;
+          message: string;
+          is_read: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          type: 'budget' | 'bill' | 'insight' | 'security';
+          title: string;
+          message: string;
+          is_read?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          type?: 'budget' | 'bill' | 'insight' | 'security';
+          title?: string;
+          message?: string;
+          is_read?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
     };
     Views: {
       [_ in never]: never;

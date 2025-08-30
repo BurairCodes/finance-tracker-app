@@ -1,10 +1,5 @@
 import axios from 'axios';
-import {
-  EXPO_PUBLIC_AZURE_VISION_ENDPOINT,
-  AZURE_COMPUTER_VISION_ENDPOINT,
-  EXPO_PUBLIC_AZURE_VISION_API_KEY,
-  AZURE_COMPUTER_VISION_API_KEY,
-} from '@env';
+
 
 export interface ReceiptData {
   amount: number;
@@ -23,14 +18,14 @@ export class OCRService {
   private static getAzureCredentials() {
     // Debug: Log all environment variables
     console.log('🔍 Debugging environment variables...');
-    console.log('EXPO_PUBLIC_AZURE_VISION_ENDPOINT:', EXPO_PUBLIC_AZURE_VISION_ENDPOINT);
-    console.log('AZURE_COMPUTER_VISION_ENDPOINT:', AZURE_COMPUTER_VISION_ENDPOINT);
-    console.log('EXPO_PUBLIC_AZURE_VISION_API_KEY:', EXPO_PUBLIC_AZURE_VISION_API_KEY ? '***SET***' : 'NOT SET');
-    console.log('AZURE_COMPUTER_VISION_API_KEY:', AZURE_COMPUTER_VISION_API_KEY ? '***SET***' : 'NOT SET');
+    console.log('EXPO_PUBLIC_AZURE_VISION_ENDPOINT:', process.env.EXPO_PUBLIC_AZURE_VISION_ENDPOINT);
+    console.log('AZURE_COMPUTER_VISION_ENDPOINT:', process.env.AZURE_COMPUTER_VISION_ENDPOINT);
+    console.log('EXPO_PUBLIC_AZURE_VISION_API_KEY:', process.env.EXPO_PUBLIC_AZURE_VISION_API_KEY ? '***SET***' : 'NOT SET');
+    console.log('AZURE_COMPUTER_VISION_API_KEY:', process.env.AZURE_COMPUTER_VISION_API_KEY ? '***SET***' : 'NOT SET');
     
     // Get credentials from environment variables
-    const endpoint = EXPO_PUBLIC_AZURE_VISION_ENDPOINT || AZURE_COMPUTER_VISION_ENDPOINT;
-    const apiKey = EXPO_PUBLIC_AZURE_VISION_API_KEY || AZURE_COMPUTER_VISION_API_KEY;
+    const endpoint = process.env.EXPO_PUBLIC_AZURE_VISION_ENDPOINT || process.env.AZURE_COMPUTER_VISION_ENDPOINT;
+    const apiKey = process.env.EXPO_PUBLIC_AZURE_VISION_API_KEY || process.env.AZURE_COMPUTER_VISION_API_KEY;
 
     if (!endpoint || !apiKey) {
       console.log('🔴 Azure Computer Vision credentials not configured');

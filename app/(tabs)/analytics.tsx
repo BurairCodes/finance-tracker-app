@@ -14,6 +14,7 @@ import { useProfile } from '@/hooks/useProfile';
 import { useTransactions } from '@/hooks/useTransactions';
 import { AIService } from '@/services/aiService';
 import { ExchangeRateService } from '@/services/exchangeRateService';
+import { NotificationService } from '@/services/notificationService';
 import AuthScreen from '@/components/AuthScreen';
 import Theme from '@/constants/Theme';
 
@@ -31,8 +32,110 @@ export default function AnalyticsScreen() {
   useEffect(() => {
     if (transactions.length > 0) {
       analyzeTransactions();
+      generateWeeklyInsights();
     }
   }, [transactions, profile]);
+
+  const generateWeeklyInsights = async () => {
+    if (!user?.id || transactions.length === 0) return;
+    
+    try {
+      const currentWeek = new Date();
+      const weekStart = new Date(currentWeek);
+      weekStart.setDate(currentWeek.getDate() - currentWeek.getDay());
+      
+      const weeklyExpenses = transactions.filter(t => {
+        const transactionDate = new Date(t.date);
+        return t.type === 'expense' && 
+               transactionDate >= weekStart && 
+               transactionDate <= currentWeek;
+      });
+      
+      const weeklyIncome = transactions.filter(t => {
+        const transactionDate = new Date(t.date);
+        return t.type === 'income' && 
+               transactionDate >= weekStart && 
+               transactionDate <= currentWeek;
+      });
+      
+      let totalExpenses = 0;
+      let totalIncome = 0;
+      const userBaseCurrency = profile?.base_currency || 'PKR';
+      
+      // Calculate totals with currency conversion
+      for (const expense of weeklyExpenses) {
+        try {
+          const convertedAmount = await ExchangeRateService.convertCurrency(
+            Math.abs(expense.amount),
+            expense.currency,
+            userBaseCurrency
+          );
+          totalExpenses += convertedAmount;
+        } catch (error) {
+          totalExpenses += Math.abs(expense.amount);
+        }
+      }
+      
+      for (const income of weeklyIncome) {
+        try {
+          const convertedAmount = await ExchangeRateService.convertCurrency(
+            Math.abs(income.amount),
+            income.currency,
+            userBaseCurrency
+          );
+          totalIncome += convertedAmount;
+        } catch (error) {
+          totalIncome += Math.abs(income.amount);
+        }
+      }
+      
+      // Find top spending category
+      const categoryTotals: Record<string, number> = {};
+      for (const expense of weeklyExpenses) {
+        try {
+          const convertedAmount = await ExchangeRateService.convertCurrency(
+            Math.abs(expense.amount),
+            expense.currency,
+            userBaseCurrency
+          );
+          categoryTotals[expense.category] = (categoryTotals[expense.category] || 0) + convertedAmount;
+        } catch (error) {
+          categoryTotals[expense.category] = (categoryTotals[expense.category] || 0) + Math.abs(expense.amount);
+        }
+      }
+      
+      const topCategory = Object.entries(categoryTotals)
+        .sort(([,a], [,b]) => b - a)[0];
+      
+      // Calculate savings rate
+      const savingsRate = totalIncome > 0 ? ((totalIncome - totalExpenses) / totalIncome) * 100 : 0;
+      
+      // Create weekly insight notification
+      await NotificationService.createWeeklyInsight(
+        user.id,
+        totalExpenses,
+        totalIncome,
+        userBaseCurrency,
+        topCategory?.[0] || 'None',
+        savingsRate
+      );
+
+      // Also create a monthly insight notification
+      try {
+        await NotificationService.createNotification(
+          user.id,
+          'insight',
+          '📈 Monthly Spending Overview',
+          `This month you've spent ${userBaseCurrency} ${totalExpenses.toLocaleString()}. Top category: ${topCategory?.[0] || 'None'}`
+        );
+      } catch (error) {
+        console.error('Failed to create monthly insight notification:', error);
+      }
+      
+    } catch (error) {
+      console.error('Failed to generate weekly insights:', error);
+    }
+  };
 
   const analyzeTransactions = async () => {
     // Category breakdown for current month

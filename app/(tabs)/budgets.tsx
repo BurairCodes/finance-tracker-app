@@ -84,7 +84,8 @@ export default function BudgetsScreen() {
       
       // Check for budget alerts using budget currency
       try {
-        await NotificationService.scheduleBudgetAlert(
+        await NotificationService.createBudgetAlert(
+          user.id,
           budget.category,
           totalSpent,
           budget.amount,
