@@ -44,32 +44,13 @@ import {
   Clock,
   Star,
   Zap,
-  Server,
-  Wifi,
-  HardDrive,
-  Cpu,
   X,
   Plus,
   ArrowRight,
-  Download,
-  Upload,
-  FileText,
-  Lock,
-  Unlock,
-  UserPlus,
-  UserMinus,
   Crown,
   Flag,
   Bell,
   BellOff,
-  Volume2,
-  VolumeX,
-  Sun,
-  Moon,
-  Monitor,
-  Smartphone,
-  Tablet,
-  Globe2,
   MapPin,
   Clock as ClockIcon,
   Calendar as CalendarIcon,
@@ -94,10 +75,11 @@ import {
   ExternalLink,
   Copy,
   Share,
-  Archive,
-  ArchiveRestore,
-  Trash,
-  RotateCcw,
+  UserPlus,
+  Server,
+  Lock,
+  Unlock,
+  Download,
   Save,
   Check,
   X as XIcon,
@@ -217,7 +199,7 @@ export default function AdminScreen() {
   const [adminActions, setAdminActions] = useState<AdminAction[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [selectedTab, setSelectedTab] = useState<'overview' | 'users' | 'actions' | 'system'>('overview');
+  const [selectedTab, setSelectedTab] = useState<'overview' | 'users' | 'actions'>('overview');
   const [showUserModal, setShowUserModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -520,141 +502,7 @@ export default function AdminScreen() {
     }
   };
 
-  // Data Management Handlers
-  const handleExportAllData = async () => {
-    try {
-      Alert.alert(
-        'Export Data',
-        'This will export all user data, transactions, and budgets. Continue?',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Export',
-            onPress: async () => {
-              // Get current admin user
-              const { data: { user: currentAdmin } } = await supabase.auth.getUser();
-              if (!currentAdmin) {
-                Alert.alert('Error', 'You must be logged in to export data');
-                return;
-              }
 
-              // Log admin action
-              await supabase
-                .from('admin_actions')
-                .insert({
-                  action_type: 'data_export',
-                  description: 'Exported all application data',
-                  admin_user: currentAdmin.email,
-                  details: { export_type: 'all_data' },
-                });
-
-              Alert.alert('Success', 'Data export initiated. Check your email for the download link.');
-            },
-          },
-        ]
-      );
-    } catch (error) {
-      console.error('Export error:', error);
-      Alert.alert('Error', 'Failed to initiate data export');
-    }
-  };
-
-  const handleBackupDatabase = async () => {
-    try {
-      Alert.alert(
-        'Backup Database',
-        'This will create a backup of the entire database. Continue?',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Backup',
-            onPress: async () => {
-              // Get current admin user
-              const { data: { user: currentAdmin } } = await supabase.auth.getUser();
-              if (!currentAdmin) {
-                Alert.alert('Error', 'You must be logged in to backup data');
-                return;
-              }
-
-              // Log admin action
-              await supabase
-                .from('admin_actions')
-                .insert({
-                  action_type: 'system_config',
-                  description: 'Database backup initiated',
-                  admin_user: currentAdmin.email,
-                  details: { backup_type: 'full_database' },
-                });
-
-              Alert.alert('Success', 'Database backup initiated. You will be notified when complete.');
-            },
-          },
-        ]
-      );
-    } catch (error) {
-      console.error('Backup error:', error);
-      Alert.alert('Error', 'Failed to initiate database backup');
-    }
-  };
-
-  const handleCleanOldData = async () => {
-    try {
-      Alert.alert(
-        'Clean Old Data',
-        'This will remove transactions older than 2 years. This action cannot be undone. Continue?',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Clean',
-            style: 'destructive',
-            onPress: async () => {
-              // Get current admin user
-              const { data: { user: currentAdmin } } = await supabase.auth.getUser();
-              if (!currentAdmin) {
-                Alert.alert('Error', 'You must be logged in to clean data');
-                return;
-              }
-
-              // Calculate date 2 years ago
-              const twoYearsAgo = new Date();
-              twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2);
-
-              // Delete old transactions
-              const { error: deleteError } = await supabase
-                .from('transactions')
-                .delete()
-                .lt('created_at', twoYearsAgo.toISOString());
-
-              if (deleteError) {
-                throw deleteError;
-              }
-
-              // Log admin action
-              await supabase
-                .from('admin_actions')
-                .insert({
-                  action_type: 'system_config',
-                  description: 'Cleaned old transaction data',
-                  admin_user: currentAdmin.email,
-                  details: { 
-                    clean_type: 'old_transactions',
-                    cutoff_date: twoYearsAgo.toISOString()
-                  },
-                });
-
-              Alert.alert('Success', 'Old data has been cleaned successfully.');
-              
-              // Refresh data
-              await fetchAdminData();
-            },
-          },
-        ]
-      );
-    } catch (error) {
-      console.error('Clean error:', error);
-      Alert.alert('Error', 'Failed to clean old data');
-    }
-  };
 
   const handleUserAction = async (action: 'promote' | 'demote' | 'ban' | 'unban', user: User) => {
     const actionText = {
@@ -1084,102 +932,7 @@ export default function AdminScreen() {
     </ScrollView>
   );
 
-  const renderSystemTab = () => (
-    <ScrollView 
-      style={styles.tabContent}
-      contentContainerStyle={{ paddingBottom: 20 }}
-    >
-      {/* System Configuration */}
-      <View style={styles.card}>
-        <View style={styles.cardHeader}>
-          <Settings size={24} color={Theme.colors.primary} />
-          <Text style={styles.cardTitle}>System Configuration</Text>
-        </View>
-        
-        <View style={styles.configItem}>
-          <Text style={styles.configLabel}>Rate Limiting</Text>
-          <TouchableOpacity style={styles.configButton}>
-            <Text style={styles.configButtonText}>Configure</Text>
-          </TouchableOpacity>
-        </View>
-        
-        <View style={styles.configItem}>
-          <Text style={styles.configLabel}>Backup Schedule</Text>
-          <TouchableOpacity style={styles.configButton}>
-            <Text style={styles.configButtonText}>Configure</Text>
-          </TouchableOpacity>
-        </View>
-        
-        <View style={styles.configItem}>
-          <Text style={styles.configLabel}>Email Notifications</Text>
-          <TouchableOpacity style={styles.configButton}>
-            <Text style={styles.configButtonText}>Configure</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
 
-             {/* Data Management */}
-       <View style={styles.card}>
-         <View style={styles.cardHeader}>
-           <Database size={24} color={Theme.colors.success} />
-           <Text style={styles.cardTitle}>Data Management</Text>
-         </View>
-         
-         <TouchableOpacity 
-           style={styles.dataAction}
-           onPress={handleExportAllData}
-         >
-           <Download size={20} color={Theme.colors.primary} />
-           <Text style={styles.dataActionText}>Export All Data</Text>
-           <ArrowRight size={16} color={Theme.colors.textSecondary} />
-         </TouchableOpacity>
-         
-         <TouchableOpacity 
-           style={styles.dataAction}
-           onPress={handleBackupDatabase}
-         >
-           <Archive size={20} color={Theme.colors.warning} />
-           <Text style={styles.dataActionText}>Backup Database</Text>
-           <ArrowRight size={16} color={Theme.colors.textSecondary} />
-         </TouchableOpacity>
-         
-         <TouchableOpacity 
-           style={styles.dataAction}
-           onPress={handleCleanOldData}
-         >
-           <Trash size={20} color={Theme.colors.error} />
-           <Text style={styles.dataActionText}>Clean Old Data</Text>
-           <ArrowRight size={16} color={Theme.colors.textSecondary} />
-         </TouchableOpacity>
-       </View>
-
-      {/* Performance Monitoring */}
-      <View style={styles.card}>
-        <View style={styles.cardHeader}>
-          <Activity size={24} color={Theme.colors.info} />
-          <Text style={styles.cardTitle}>Performance</Text>
-        </View>
-        
-        <View style={styles.performanceItem}>
-          <Cpu size={20} color={Theme.colors.primary} />
-          <Text style={styles.performanceLabel}>CPU Usage</Text>
-          <Text style={styles.performanceValue}>45%</Text>
-        </View>
-        
-        <View style={styles.performanceItem}>
-          <HardDrive size={20} color={Theme.colors.success} />
-          <Text style={styles.performanceLabel}>Storage</Text>
-          <Text style={styles.performanceValue}>78%</Text>
-        </View>
-        
-        <View style={styles.performanceItem}>
-          <Wifi size={20} color={Theme.colors.warning} />
-          <Text style={styles.performanceLabel}>Network</Text>
-          <Text style={styles.performanceValue}>23%</Text>
-        </View>
-      </View>
-    </ScrollView>
-  );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -1220,13 +973,7 @@ export default function AdminScreen() {
           <Text style={[styles.tabText, selectedTab === 'actions' && styles.tabTextActive]}>Actions</Text>
         </TouchableOpacity>
         
-        <TouchableOpacity 
-          style={[styles.tabButton, selectedTab === 'system' && styles.tabActive]}
-          onPress={() => setSelectedTab('system')}
-        >
-          <Settings size={16} color={selectedTab === 'system' ? '#FFFFFF' : Theme.colors.textSecondary} />
-          <Text style={[styles.tabText, selectedTab === 'system' && styles.tabTextActive]}>System</Text>
-        </TouchableOpacity>
+
       </View>
 
       {/* Content */}
@@ -1247,7 +994,7 @@ export default function AdminScreen() {
             {selectedTab === 'overview' && renderOverviewTab()}
             {selectedTab === 'users' && renderUsersTab()}
             {selectedTab === 'actions' && renderActionsTab()}
-            {selectedTab === 'system' && renderSystemTab()}
+
           </>
         )}
       </ScrollView>

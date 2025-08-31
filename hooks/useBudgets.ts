@@ -30,7 +30,16 @@ export function useBudgets(userId: string | undefined) {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setBudgets(data || []);
+      // Filter out any invalid budgets that might have null values
+      const validBudgets = (data || []).filter(budget => 
+        budget && 
+        budget.id && 
+        budget.category && 
+        budget.amount && 
+        budget.currency && 
+        budget.user_id
+      );
+      setBudgets(validBudgets);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch budgets');
     } finally {
@@ -54,6 +63,11 @@ export function useBudgets(userId: string | undefined) {
         .single();
 
       if (error) throw error;
+      
+      // Validate the returned budget data
+      if (!data || !data.id || !data.category || !data.amount || !data.currency) {
+        throw new Error('Invalid budget data returned from database');
+      }
       
       // Create a welcome notification for the new budget
       try {
@@ -86,6 +100,11 @@ export function useBudgets(userId: string | undefined) {
         .single();
 
       if (error) throw error;
+      
+      // Validate the returned budget data
+      if (!data || !data.id || !data.category || !data.amount || !data.currency) {
+        throw new Error('Invalid budget data returned from database');
+      }
       
       setBudgets(prev => 
         prev.map(budget => 
@@ -132,7 +151,7 @@ export function useBudgets(userId: string | undefined) {
     try {
       // Get all budgets and their current spending
       const budgetsWithSpending = await Promise.all(
-        budgets.map(async (budget) => {
+        budgets.filter(budget => budget && budget.id && budget.category && budget.amount && budget.currency).map(async (budget) => {
           // Get transactions for this category in the current period
           const now = new Date();
           let startDate = new Date();
@@ -191,16 +210,26 @@ export function useBudgets(userId: string | undefined) {
 
       // Check each budget and create notifications if needed
       for (const budgetWithSpending of budgetsWithSpending) {
+        // Add null checks to prevent errors
+        if (!budgetWithSpending || !budgetWithSpending.amount || !budgetWithSpending.category || !budgetWithSpending.currency) {
+          console.warn('Skipping budget alert - invalid budget data:', budgetWithSpending);
+          continue;
+        }
+
         const percentage = (budgetWithSpending.totalSpent / budgetWithSpending.amount) * 100;
         
         if (percentage >= 80) {
-          await NotificationService.createBudgetAlert(
-            userId,
-            budgetWithSpending.category,
-            budgetWithSpending.totalSpent,
-            budgetWithSpending.amount,
-            budgetWithSpending.currency
-          );
+          try {
+            await NotificationService.createBudgetAlert(
+              userId,
+              budgetWithSpending.category,
+              budgetWithSpending.totalSpent,
+              budgetWithSpending.amount,
+              budgetWithSpending.currency
+            );
+          } catch (error) {
+            console.error(`Budget alert error for ${budgetWithSpending.category}:`, error);
+          }
         }
       }
     } catch (error) {

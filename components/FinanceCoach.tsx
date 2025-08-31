@@ -26,6 +26,7 @@ import { useBudgets } from '@/hooks/useBudgets';
 import { AIService } from '@/services/aiService';
 import { ExchangeRateService } from '@/services/exchangeRateService';
 import Theme from '@/constants/Theme';
+import { decodeHtmlEntities } from '@/utils/htmlDecode';
 
 interface Message {
   id: string;
@@ -61,7 +62,7 @@ export default function FinanceCoach() {
   const addWelcomeMessage = () => {
     const welcomeMessage: Message = {
       id: 'welcome',
-      text: "Hello! I&apos;m your AI Finance Coach powered by Google Gemini. I can help you with budgeting advice, spending insights, financial tips, and answer any money-related questions. What would you like to know?",
+      text: "Hello! I'm your AI Finance Coach powered by Google Gemini. I can help you with budgeting advice, spending insights, financial tips, and answer any money-related questions. What would you like to know?",
       isUser: false,
       timestamp: new Date(),
       type: 'tip'
@@ -91,7 +92,7 @@ export default function FinanceCoach() {
       currentInsights.push({
         id: 'high-spending',
         title: 'High Daily Spending',
-        description: `You&apos;re spending an average of ${ExchangeRateService.formatCurrency(avgDailySpending, 'PKR')} per day this month. Consider reviewing your daily expenses.`,
+        description: `You're spending an average of ${ExchangeRateService.formatCurrency(avgDailySpending, 'PKR')} per day this month. Consider reviewing your daily expenses.`,
         type: 'warning',
         icon: TrendingUp,
         action: 'How can I reduce my daily spending?'
@@ -111,7 +112,7 @@ export default function FinanceCoach() {
       currentInsights.push({
         id: 'over-budget',
         title: 'Budget Exceeded',
-        description: `You&apos;ve exceeded your ${overBudget.budget.category} budget by ${Math.round(overBudget.utilization - 100)}%.`,
+        description: `You've exceeded your ${overBudget.budget.category} budget by ${Math.round(overBudget.utilization - 100)}%.`,
         type: 'warning',
         icon: AlertTriangle,
         action: 'How can I get back on track?'
@@ -242,7 +243,7 @@ export default function FinanceCoach() {
         {/* Financial Insights */}
         {insights.length > 0 && (
           <View style={styles.insightsSection}>
-            <Text style={styles.sectionTitle}>Today&apos;s Insights</Text>
+            <Text style={styles.sectionTitle}>Today's Insights</Text>
             {insights.map((insight) => (
               <TouchableOpacity
                 key={insight.id}
@@ -253,10 +254,10 @@ export default function FinanceCoach() {
                   <insight.icon size={20} color={insight.type === 'warning' ? Theme.colors.error : Theme.colors.success} />
                   <Text style={styles.insightTitle}>{insight.title}</Text>
                 </View>
-                <Text style={styles.insightDescription}>{insight.description}</Text>
+                <Text style={styles.insightDescription}>{decodeHtmlEntities(insight.description)}</Text>
                 {insight.action && (
                   <View style={styles.insightAction}>
-                    <Text style={styles.actionText}>{insight.action}</Text>
+                    <Text style={styles.actionText}>{decodeHtmlEntities(insight.action)}</Text>
                     <ChevronRight size={16} color={Theme.colors.primary} />
                   </View>
                 )}
@@ -292,7 +293,7 @@ export default function FinanceCoach() {
                   message.type === 'ai' ? styles.aiMessageText :
                   styles.aiMessageText
                 ]}>
-                  {message.text}
+                  {decodeHtmlEntities(message.text)}
                 </Text>
               </View>
             </View>
