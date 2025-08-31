@@ -5,8 +5,7 @@ import {
   Target, 
   BarChart3, 
   Settings, 
-  MessageCircle,
-  Plus 
+  MessageCircle
 } from 'lucide-react-native';
 import { Platform, View, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';

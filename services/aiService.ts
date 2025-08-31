@@ -12,6 +12,23 @@ interface ReceiptData {
   confidence: number;
 }
 
+interface UserFinancialSummary {
+  totalExpenses: number;
+  totalIncome: number;
+  savings: number;
+  savingsRate: number;
+  categorySpending: { [key: string]: number };
+  topSpendingCategory: [string, number] | null;
+  budgetUtilization: Array<{
+    category: string;
+    budget: number;
+    spent: number;
+    utilization: number;
+  }>;
+  transactionCount: number;
+  currency: string;
+}
+
 export class AIService {
   private static readonly FOOD_KEYWORDS = ['restaurant', 'cafe', 'grocery', 'food', 'dining', 'lunch', 'dinner', 'breakfast', 'pizza', 'burger', 'kfc', 'mcdonalds', 'dominos', 'subway', 'biryani', 'karahi', 'daal', 'roti', 'naan', 'chai', 'lassi', 'haleem', 'nihari', 'kebab', 'tikka', 'samosa', 'pakora', 'chaat', 'kulfi', 'falooda', 'meal', 'snack', 'coffee', 'tea', 'juice', 'drink', 'eat', 'hungry', 'thirsty'];
   private static readonly TRANSPORT_KEYWORDS = ['gas', 'fuel', 'uber', 'taxi', 'bus', 'train', 'parking', 'petrol', 'careem', 'rickshaw', 'metro', 'cng', 'diesel', 'toll', 'qingqi', 'chingchi', 'suzuki', 'corolla', 'civic', 'mehran', 'cultus', 'alto', 'transport', 'travel', 'commute', 'ride', 'drive', 'car', 'bike', 'motorcycle'];
@@ -21,6 +38,7 @@ export class AIService {
   private static readonly HEALTHCARE_KEYWORDS = ['doctor', 'hospital', 'medicine', 'pharmacy', 'clinic', 'medical', 'health', 'agha khan', 'shaukat khanum', 'liaquat', 'jinnah', 'civil hospital', 'pims', 'services hospital', 'healthcare', 'treatment', 'medicine', 'drug', 'therapy', 'checkup', 'appointment'];
   private static readonly EDUCATION_KEYWORDS = ['school', 'college', 'university', 'tuition', 'books', 'fees', 'education', 'lums', 'iba', 'nust', 'fast', 'comsats', 'uet', 'punjab university', 'karachi university', 'course', 'training', 'learning', 'study', 'academic'];
 
+  // Keep existing categorization logic intact
   static categorizeTransaction(description: string, amount: number): CategoryPrediction {
     const desc = description.toLowerCase();
     
@@ -96,6 +114,7 @@ export class AIService {
     return average * 1.02;
   }
 
+  // Updated AI Coach method with Google Gemini integration
   static async getFinancialAdvice(
     question: string,
     transactions: any[],
@@ -106,17 +125,116 @@ export class AIService {
       // Analyze user's financial data
       const analysis = this.analyzeFinancialData(transactions, budgets);
       
-      // Generate personalized advice based on the question and analysis
-      const advice = this.generatePersonalizedAdvice(question, analysis);
+      // Try to get response from Google Gemini API
+      const llmResponse = await this.getLLMResponse(question, analysis);
       
-      return advice;
+      if (llmResponse) {
+        return llmResponse + '\n\n⚠️ This is AI-generated financial guidance for educational purposes only.';
+      }
+      
+      // Fallback to local advice if Gemini is unavailable
+      const localAdvice = this.generatePersonalizedAdvice(question, analysis);
+      return localAdvice + '\n\n⚠️ This is AI-generated financial guidance for educational purposes only.';
+      
     } catch (error) {
       console.error('Error generating financial advice:', error);
-      return "I'm sorry, I'm having trouble analyzing your financial data right now. Please try again later.";
+      
+      // Fallback to local advice
+      const analysis = this.analyzeFinancialData(transactions, budgets);
+      const localAdvice = this.generatePersonalizedAdvice(question, analysis);
+      return localAdvice + '\n\n⚠️ This is AI-generated financial guidance for educational purposes only.';
     }
   }
 
-  private static analyzeFinancialData(transactions: any[], budgets: any[]): any {
+  // New method to call Google Gemini API using fetch (React Native compatible)
+  private static async getLLMResponse(question: string, analysis: UserFinancialSummary): Promise<string | null> {
+    try {
+      const apiKey = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
+      const model = process.env.EXPO_PUBLIC_GEMINI_MODEL;
+
+      if (!apiKey || !model) {
+        console.warn('Google Gemini API credentials not configured. Using local advice.');
+        return null;
+      }
+
+      // Create context summary for the LLM
+      const context = this.createFinancialContext(analysis);
+      
+      const prompt = `You are a helpful financial advisor. Based on the user's financial data and their question, provide personalized, actionable advice.
+
+User's Question: ${question}
+
+User's Financial Context:
+${context}
+
+Please provide:
+1. Direct answer to their question
+2. Specific, actionable advice based on their financial situation
+3. Practical steps they can take
+4. Encouraging but realistic tone
+
+Keep the response conversational, helpful, and under 300 words.`;
+
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Gemini API error: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      
+      if (!text) {
+        console.warn('No response text from Gemini API');
+        return null;
+      }
+
+      return text;
+    } catch (error) {
+      console.error('Error calling Google Gemini API:', error);
+      return null;
+    }
+  }
+
+  // Create financial context summary for LLM
+  private static createFinancialContext(analysis: UserFinancialSummary): string {
+    const context = [
+      `Monthly Income: ${analysis.totalIncome.toFixed(2)}`,
+      `Monthly Expenses: ${analysis.totalExpenses.toFixed(2)}`,
+      `Savings: ${analysis.savings.toFixed(2)} (${analysis.savingsRate.toFixed(1)}% of income)`,
+      `Total Transactions: ${analysis.transactionCount}`,
+    ];
+
+    if (analysis.topSpendingCategory) {
+      context.push(`Highest Spending Category: ${analysis.topSpendingCategory[0]} (${analysis.topSpendingCategory[1].toFixed(2)})`);
+    }
+
+    const overBudget = analysis.budgetUtilization.filter(b => b.utilization > 100);
+    if (overBudget.length > 0) {
+      context.push(`Over Budget Categories: ${overBudget.map(b => `${b.category} (${b.utilization.toFixed(1)}%)`).join(', ')}`);
+    }
+
+    const categoryBreakdown = Object.entries(analysis.categorySpending)
+      .map(([category, amount]) => `${category}: ${amount.toFixed(2)}`)
+      .join(', ');
+
+    context.push(`Category Breakdown: ${categoryBreakdown}`);
+
+    return context.join('\n');
+  }
+
+  private static analyzeFinancialData(transactions: any[], budgets: any[]): UserFinancialSummary {
     const currentMonth = new Date().getMonth();
     const currentYear = new Date().getFullYear();
     
@@ -140,7 +258,7 @@ export class AIService {
     });
 
     const topSpendingCategory = Object.entries(categorySpending)
-      .sort(([,a], [,b]) => b - a)[0];
+      .sort(([,a], [,b]) => b - a)[0] || null;
 
     // Budget analysis
     const budgetUtilization = budgets.map(budget => {
@@ -161,7 +279,8 @@ export class AIService {
       categorySpending,
       topSpendingCategory,
       budgetUtilization,
-      transactionCount: monthlyTransactions.length
+      transactionCount: monthlyTransactions.length,
+      currency: 'PKR' // Default currency
     };
   }
 
@@ -304,7 +423,7 @@ export class AIService {
     return ['Item 1', 'Item 2', 'Item 3'];
   }
 
-  private static generatePersonalizedAdvice(question: string, analysis: any): string {
+  private static generatePersonalizedAdvice(question: string, analysis: UserFinancialSummary): string {
     const questionLower = question.toLowerCase();
     
     // Savings advice

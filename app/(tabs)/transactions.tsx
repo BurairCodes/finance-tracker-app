@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Picker } from '@react-native-picker/picker';
+// Removed unused Picker import
 import { 
   Plus, 
   Search, 
@@ -32,7 +32,7 @@ import EditTransactionModal from '@/components/EditTransactionModal';
 import Theme from '@/constants/Theme';
 import { Database } from '@/types/database';
 
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+// Removed unused screen dimensions
 
 export default function TransactionsScreen() {
   const { user } = useAuth();

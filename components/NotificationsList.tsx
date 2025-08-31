@@ -20,12 +20,12 @@ import {
   Clock,
 } from 'lucide-react-native';
 import { useNotifications } from '@/hooks/useNotifications';
-import { NotificationService } from '@/services/notificationService';
-import { useAuth } from '@/hooks/useAuth';
+// Removed unused NotificationService import
+// Removed unused useAuth import
 import Theme from '@/constants/Theme';
 
 const NotificationsList: React.FC = () => {
-  const { user } = useAuth();
+  // Removed unused user variable
   const {
     notifications,
     loading,
@@ -147,7 +147,7 @@ const NotificationsList: React.FC = () => {
         <Bell size={48} color={Theme.colors.textSecondary} />
         <Text style={styles.emptyTitle}>No notifications yet</Text>
         <Text style={styles.emptyText}>
-          You'll see budget alerts, bill reminders, and financial insights here
+          You&apos;ll see budget alerts, bill reminders, and financial insights here
         </Text>
       </View>
     );

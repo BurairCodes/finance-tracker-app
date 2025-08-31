@@ -23,7 +23,6 @@ import {
   LogOut,
   ChevronRight,
   ChevronLeft,
-  X,
   AlertCircle,
   CheckCircle
 } from 'lucide-react-native';
@@ -37,7 +36,7 @@ import TwoFactorAuthModal from '@/components/TwoFactorAuthModal';
 import { NotificationService } from '@/services/notificationService';
 import { OTPService, OTPConfig } from '@/services/otpService';
 
-import { PDFService } from '@/services/pdfService';
+// Removed unused PDFService import
 import { ExportService } from '@/services/exportService';
 import { ExchangeRateService } from '@/services/exchangeRateService';
 import { useTransactions } from '@/hooks/useTransactions';
@@ -45,7 +44,7 @@ import { useBudgets } from '@/hooks/useBudgets';
 import { router } from 'expo-router';
 import Theme from '@/constants/Theme';
 
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+// Removed unused screen dimensions
 
 export default function SettingsScreen() {
   const { user, signOut } = useAuth();
@@ -57,8 +56,8 @@ export default function SettingsScreen() {
   const [showSecurityModal, setShowSecurityModal] = useState(false);
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
   const [show2FAModal, setShow2FAModal] = useState(false);
-  const [budgetAlerts, setBudgetAlerts] = useState(true);
-  const [dailySummary, setDailySummary] = useState(false);
+  const [budgetAlerts] = useState(true);
+  const [dailySummary] = useState(false);
   const [smsAuth, setSmsAuth] = useState(false);
   const [appAuth, setAppAuth] = useState(false);
   const [current2FAConfig, setCurrent2FAConfig] = useState<OTPConfig | null>(null);
@@ -76,7 +75,7 @@ export default function SettingsScreen() {
       budgetAlerts: budgetAlerts,
       dailySummary: dailySummary,
     });
-  }, []);
+  }, [budgetAlerts, dailySummary]);
 
   const handleSignOut = () => {
     Alert.alert(
@@ -104,15 +103,7 @@ export default function SettingsScreen() {
 
 
 
-  const handleClearAllNotifications = async () => {
-    try {
-      // This will be handled by the NotificationsList component
-      // We just need to close the modal and refresh
-      setShowNotificationModal(false);
-    } catch (error) {
-      console.error('Failed to clear notifications:', error);
-    }
-  };
+  // Removed unused handleClearAllNotifications function
 
   const handleExportData = async () => {
     setExportingData(true);
@@ -127,7 +118,7 @@ export default function SettingsScreen() {
               try {
                 await ExportService.exportTransactionsToCSV(transactions);
                 Alert.alert('Success', 'Transactions exported successfully!');
-              } catch (error) {
+              } catch {
                 Alert.alert('Error', 'Failed to export transactions');
               }
             }
@@ -138,7 +129,7 @@ export default function SettingsScreen() {
               try {
                 await ExportService.exportBudgetsToCSV(budgets);
                 Alert.alert('Success', 'Budgets exported successfully!');
-              } catch (error) {
+              } catch {
                 Alert.alert('Error', 'Failed to export budgets');
               }
             }
@@ -152,7 +143,7 @@ export default function SettingsScreen() {
                   'Monthly Report',
                   `Income: $${report.totalIncome.toFixed(2)}\nExpenses: $${report.totalExpenses.toFixed(2)}\nNet Savings: $${report.netSavings.toFixed(2)}\n\nTop Categories:\n${report.topCategories.map(cat => `• ${cat.category}: $${cat.amount.toFixed(2)}`).join('\n')}`
                 );
-              } catch (error) {
+              } catch {
                 Alert.alert('Error', 'Failed to generate report');
               }
             }
@@ -163,7 +154,7 @@ export default function SettingsScreen() {
           }
         ]
       );
-    } catch (error) {
+    } catch {
       Alert.alert('Error', 'Failed to export data');
     } finally {
       setExportingData(false);
@@ -225,15 +216,7 @@ export default function SettingsScreen() {
     setShowSecurityModal(true);
   };
 
-  const handleNotificationToggle = (setting: 'budgetAlerts' | 'dailySummary') => {
-    const newSettings = {
-      ...notificationSettings,
-      [setting]: !notificationSettings[setting]
-    };
-    setNotificationSettings(newSettings);
-    
-    // In a real app, you'd save these to AsyncStorage or backend
-  };
+  // Removed unused handleNotificationToggle function
 
   const handleSecurityToggle = async (setting: 'smsAuth' | 'appAuth') => {
     if (!user) return;

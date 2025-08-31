@@ -9,8 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
+// Removed unused imports
 import { Chrome } from 'lucide-react-native';
 import { useAuth } from '@/hooks/useAuth';
 import { ValidationUtils } from '@/utils/validation';
@@ -63,7 +62,7 @@ export default function AuthScreen() {
           setPassword(''); // Clear password for security
         }
       }
-    } catch (error) {
+    } catch {
       Alert.alert('Error', 'Something went wrong. Please try again.');
     } finally {
       setLoading(false);
@@ -84,7 +83,7 @@ export default function AuthScreen() {
         // Success - the user will be automatically redirected
         console.log('Google Sign-In initiated successfully');
       }
-    } catch (error) {
+    } catch {
       console.error('Google Sign-In Exception:', error);
       Alert.alert(
         'Error', 

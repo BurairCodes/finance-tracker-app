@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -14,15 +13,12 @@ import {
   MessageCircle, 
   Send, 
   TrendingUp, 
-  TrendingDown, 
   Target, 
   AlertTriangle,
   Lightbulb,
-  DollarSign,
-  Calendar,
-  BarChart3,
-  X,
-  ChevronRight
+  ChevronRight,
+  Brain,
+  Sparkles
 } from 'lucide-react-native';
 import { useAuth } from '@/hooks/useAuth';
 import { useTransactions } from '@/hooks/useTransactions';
@@ -36,7 +32,7 @@ interface Message {
   text: string;
   isUser: boolean;
   timestamp: Date;
-  type?: 'advice' | 'insight' | 'warning' | 'tip';
+  type?: 'advice' | 'insight' | 'warning' | 'tip' | 'ai';
 }
 
 interface FinancialInsight {
@@ -60,12 +56,12 @@ export default function FinanceCoach() {
   useEffect(() => {
     generateInitialInsights();
     addWelcomeMessage();
-  }, [transactions, budgets]);
+  }, [transactions, budgets, generateInitialInsights]);
 
   const addWelcomeMessage = () => {
     const welcomeMessage: Message = {
       id: 'welcome',
-      text: "Hello! I'm your AI Finance Coach. I can help you with budgeting advice, spending insights, financial tips, and answer any money-related questions. What would you like to know?",
+      text: "Hello! I&apos;m your AI Finance Coach powered by Google Gemini. I can help you with budgeting advice, spending insights, financial tips, and answer any money-related questions. What would you like to know?",
       isUser: false,
       timestamp: new Date(),
       type: 'tip'
@@ -95,7 +91,7 @@ export default function FinanceCoach() {
       currentInsights.push({
         id: 'high-spending',
         title: 'High Daily Spending',
-        description: `You're spending an average of ${ExchangeRateService.formatCurrency(avgDailySpending, 'PKR')} per day this month. Consider reviewing your daily expenses.`,
+        description: `You&apos;re spending an average of ${ExchangeRateService.formatCurrency(avgDailySpending, 'PKR')} per day this month. Consider reviewing your daily expenses.`,
         type: 'warning',
         icon: TrendingUp,
         action: 'How can I reduce my daily spending?'
@@ -115,7 +111,7 @@ export default function FinanceCoach() {
       currentInsights.push({
         id: 'over-budget',
         title: 'Budget Exceeded',
-        description: `You've exceeded your ${overBudget.budget.category} budget by ${Math.round(overBudget.utilization - 100)}%.`,
+        description: `You&apos;ve exceeded your ${overBudget.budget.category} budget by ${Math.round(overBudget.utilization - 100)}%.`,
         type: 'warning',
         icon: AlertTriangle,
         action: 'How can I get back on track?'
@@ -174,11 +170,11 @@ export default function FinanceCoach() {
         text: response,
         isUser: false,
         timestamp: new Date(),
-        type: 'advice'
+        type: 'ai'
       };
 
       setMessages(prev => [...prev, aiMessage]);
-    } catch (error) {
+    } catch {
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         text: "I'm sorry, I'm having trouble processing your request right now. Please try again in a moment.",
@@ -205,6 +201,8 @@ export default function FinanceCoach() {
         return styles.warningMessage;
       case 'tip':
         return styles.tipMessage;
+      case 'ai':
+        return styles.aiMessage;
       default:
         return message.isUser ? styles.userMessage : styles.aiMessage;
     }
@@ -218,6 +216,8 @@ export default function FinanceCoach() {
         return <AlertTriangle size={16} color={Theme.colors.error} />;
       case 'tip':
         return <Target size={16} color={Theme.colors.success} />;
+      case 'ai':
+        return <Brain size={16} color={Theme.colors.primary} />;
       default:
         return <MessageCircle size={16} color={Theme.colors.textTertiary} />;
     }
@@ -226,30 +226,38 @@ export default function FinanceCoach() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Finance Coach</Text>
-        <Text style={styles.subtitle}>AI-powered financial advice</Text>
+        <View style={styles.headerContent}>
+          <View style={styles.titleContainer}>
+            <Text style={styles.title}>Finance Coach</Text>
+            <View style={styles.aiBadge}>
+              <Sparkles size={12} color={Theme.colors.primary} />
+              <Text style={styles.aiBadgeText}>Gemini Powered</Text>
+            </View>
+          </View>
+          <Text style={styles.subtitle}>Advanced financial guidance with Google Gemini</Text>
+        </View>
       </View>
 
       <ScrollView style={styles.content}>
         {/* Financial Insights */}
         {insights.length > 0 && (
           <View style={styles.insightsSection}>
-            <Text style={styles.sectionTitle}>Today's Insights</Text>
+            <Text style={styles.sectionTitle}>Today&apos;s Insights</Text>
             {insights.map((insight) => (
               <TouchableOpacity
                 key={insight.id}
                 style={[styles.insightCard, styles[`${insight.type}Card`]]}
                 onPress={() => insight.action && handleInsightAction(insight.action)}
               >
-                                 <View style={styles.insightHeader}>
-                   <insight.icon size={20} color={insight.type === 'warning' ? Theme.colors.error : Theme.colors.success} />
-                   <Text style={styles.insightTitle}>{insight.title}</Text>
-                 </View>
+                <View style={styles.insightHeader}>
+                  <insight.icon size={20} color={insight.type === 'warning' ? Theme.colors.error : Theme.colors.success} />
+                  <Text style={styles.insightTitle}>{insight.title}</Text>
+                </View>
                 <Text style={styles.insightDescription}>{insight.description}</Text>
                 {insight.action && (
                   <View style={styles.insightAction}>
                     <Text style={styles.actionText}>{insight.action}</Text>
-                                         <ChevronRight size={16} color={Theme.colors.primary} />
+                    <ChevronRight size={16} color={Theme.colors.primary} />
                   </View>
                 )}
               </TouchableOpacity>
@@ -259,7 +267,7 @@ export default function FinanceCoach() {
 
         {/* Chat Messages */}
         <View style={styles.chatSection}>
-          <Text style={styles.sectionTitle}>Chat with Coach</Text>
+          <Text style={styles.sectionTitle}>Chat with Gemini Coach</Text>
           {messages.map((message) => (
             <View
               key={message.id}
@@ -274,26 +282,29 @@ export default function FinanceCoach() {
                   {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </Text>
               </View>
-                             <View style={[styles.messageBubble, getMessageStyle(message)]}>
-                 <Text style={[
-                   styles.messageText,
-                   message.isUser ? styles.userMessageText : 
-                   message.type === 'advice' ? styles.adviceMessageText :
-                   message.type === 'warning' ? styles.warningMessageText :
-                   message.type === 'tip' ? styles.tipMessageText :
-                   styles.aiMessageText
-                 ]}>
-                   {message.text}
-                 </Text>
-               </View>
+              <View style={[styles.messageBubble, getMessageStyle(message)]}>
+                <Text style={[
+                  styles.messageText,
+                  message.isUser ? styles.userMessageText : 
+                  message.type === 'advice' ? styles.adviceMessageText :
+                  message.type === 'warning' ? styles.warningMessageText :
+                  message.type === 'tip' ? styles.tipMessageText :
+                  message.type === 'ai' ? styles.aiMessageText :
+                  styles.aiMessageText
+                ]}>
+                  {message.text}
+                </Text>
+              </View>
             </View>
           ))}
-                     {isLoading && (
-             <View style={styles.loadingContainer}>
-               <ActivityIndicator size="small" color={Theme.colors.primary} />
-               <Text style={styles.loadingText}>Coach is thinking...</Text>
-             </View>
-           )}
+          {isLoading && (
+            <View style={styles.loadingContainer}>
+              <View style={styles.loadingBubble}>
+                <ActivityIndicator size="small" color={Theme.colors.primary} />
+                <Text style={styles.loadingText}>Gemini Coach is thinking...</Text>
+              </View>
+            </View>
+          )}
         </View>
       </ScrollView>
 
@@ -303,7 +314,7 @@ export default function FinanceCoach() {
           style={styles.textInput}
           value={inputText}
           onChangeText={setInputText}
-          placeholder="Ask your finance coach anything..."
+          placeholder="Ask your Gemini finance coach anything..."
           placeholderTextColor={Theme.colors.textTertiary}
           multiline
           maxLength={500}
@@ -331,15 +342,37 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Theme.colors.border,
   },
+  headerContent: {
+    flexDirection: 'column',
+  },
+  titleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: Theme.spacing.xs,
+  },
   title: {
     fontSize: Theme.typography.fontSize['2xl'],
     color: Theme.colors.textPrimary,
     fontFamily: Theme.typography.fontFamily.bold,
+    marginRight: Theme.spacing.sm,
+  },
+  aiBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    paddingHorizontal: Theme.spacing.sm,
+    paddingVertical: Theme.spacing.xs,
+    borderRadius: Theme.borderRadius.sm,
+  },
+  aiBadgeText: {
+    fontSize: Theme.typography.fontSize.xs,
+    color: Theme.colors.primary,
+    fontFamily: Theme.typography.fontFamily.medium,
+    marginLeft: Theme.spacing.xs,
   },
   subtitle: {
     fontSize: Theme.typography.fontSize.sm,
     color: Theme.colors.textTertiary,
-    marginTop: Theme.spacing.xs,
     fontFamily: Theme.typography.fontFamily.regular,
   },
   content: {
@@ -481,16 +514,24 @@ const styles = StyleSheet.create({
     color: Theme.colors.success,
   },
   loadingContainer: {
+    alignItems: 'flex-start',
+    marginBottom: Theme.spacing.md,
+  },
+  loadingBubble: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(59, 130, 246, 0.2)',
     padding: Theme.spacing.md,
+    borderRadius: Theme.borderRadius.lg,
+    maxWidth: '80%',
   },
   loadingText: {
     fontSize: Theme.typography.fontSize.sm,
-    color: Theme.colors.textTertiary,
+    color: Theme.colors.primary,
     marginLeft: Theme.spacing.sm,
-    fontFamily: Theme.typography.fontFamily.regular,
+    fontFamily: Theme.typography.fontFamily.medium,
   },
   inputContainer: {
     flexDirection: 'row',

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, Platform } from 'react-native';
+import { View, StyleSheet, Platform } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { CURRENCIES } from '@/constants/Categories';
 import Theme from '@/constants/Theme';

@@ -22,7 +22,7 @@ import AuthScreen from '@/components/AuthScreen';
 import LoadingScreen from '@/components/LoadingScreen';
 import ReceiptScanner from '@/components/ReceiptScanner';
 import { router } from 'expo-router';
-import { responsiveStyles } from '@/utils/responsiveStyles';
+// Removed unused responsiveStyles import
 import Theme from '@/constants/Theme';
 
 export default function DashboardScreen() {
@@ -43,7 +43,7 @@ export default function DashboardScreen() {
 
   useEffect(() => {
     calculateMonthlyStats();
-  }, [transactions, profile]);
+  }, [transactions, profile, calculateMonthlyStats]);
 
   useEffect(() => {
     const loadBudgetAlerts = async () => {
@@ -51,7 +51,7 @@ export default function DashboardScreen() {
       setBudgetAlerts(alerts);
     };
     loadBudgetAlerts();
-  }, [budgets, transactions, profile]);
+  }, [budgets, transactions, profile, getBudgetAlerts]);
 
   const calculateMonthlyStats = async () => {
     const currentMonth = new Date().getMonth();

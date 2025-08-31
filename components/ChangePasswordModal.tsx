@@ -8,7 +8,6 @@ import {
   TextInput,
   Alert,
   ActivityIndicator,
-  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronLeft, Eye, EyeOff, Lock, Shield, AlertCircle } from 'lucide-react-native';

@@ -18,7 +18,7 @@ import { NotificationService } from '@/services/notificationService';
 import AuthScreen from '@/components/AuthScreen';
 import Theme from '@/constants/Theme';
 
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+// Removed unused screen dimensions
 
 export default function AnalyticsScreen() {
   const { user } = useAuth();
@@ -34,7 +34,7 @@ export default function AnalyticsScreen() {
       analyzeTransactions();
       generateWeeklyInsights();
     }
-  }, [transactions, profile, loading]);
+  }, [transactions, profile, loading, analyzeTransactions, generateWeeklyInsights]);
 
   const generateWeeklyInsights = async () => {
     if (!user?.id || transactions.length === 0) return;
@@ -89,7 +89,7 @@ export default function AnalyticsScreen() {
             userBaseCurrency
           );
           totalExpenses += convertedAmount;
-        } catch (error) {
+        } catch {
           totalExpenses += Math.abs(expense.amount);
         }
       }
@@ -102,7 +102,7 @@ export default function AnalyticsScreen() {
             userBaseCurrency
           );
           totalIncome += convertedAmount;
-        } catch (error) {
+        } catch {
           totalIncome += Math.abs(income.amount);
         }
       }
@@ -117,7 +117,7 @@ export default function AnalyticsScreen() {
             userBaseCurrency
           );
           categoryTotals[expense.category] = (categoryTotals[expense.category] || 0) + convertedAmount;
-        } catch (error) {
+        } catch {
           categoryTotals[expense.category] = (categoryTotals[expense.category] || 0) + Math.abs(expense.amount);
         }
       }

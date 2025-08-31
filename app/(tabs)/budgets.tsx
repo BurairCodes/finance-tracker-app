@@ -25,7 +25,7 @@ import BillsList from '@/components/BillsList';
 import Theme from '@/constants/Theme';
 import { Database } from '@/types/database';
 
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+// Removed unused screen dimensions
 
 export default function BudgetsScreen() {
   const { user } = useAuth();
@@ -41,7 +41,7 @@ export default function BudgetsScreen() {
   useEffect(() => {
     calculateBudgetSpending();
     NotificationService.requestPermissions();
-  }, [budgets, transactions, profile]);
+  }, [budgets, transactions, profile, calculateBudgetSpending]);
 
   const calculateBudgetSpending = async () => {
     setCalculatingSpending(true);
@@ -152,13 +152,7 @@ export default function BudgetsScreen() {
     return { status: 'good', color: '#059669', icon: CheckCircle };
   };
 
-  const formatAmountInBaseCurrency = (amount: number, currency: string) => {
-    const userBaseCurrency = profile?.base_currency || 'PKR';
-    if (currency === userBaseCurrency) {
-      return ExchangeRateService.formatCurrency(amount, currency);
-    }
-    return `${ExchangeRateService.formatCurrency(amount, currency)} (${userBaseCurrency})`;
-  };
+  // Removed unused formatAmountInBaseCurrency function
 
   if (!user) {
     return <AuthScreen />;
@@ -226,7 +220,7 @@ export default function BudgetsScreen() {
           ) : (
             budgets.map((budget) => {
               const spent = budgetSpending[budget.category] || 0;
-              const { status, color, icon: StatusIcon } = getBudgetStatus(budget, spent);
+              const { color, icon: StatusIcon } = getBudgetStatus(budget, spent);
               const percentage = Math.min((spent / budget.amount) * 100, 100);
 
               return (
