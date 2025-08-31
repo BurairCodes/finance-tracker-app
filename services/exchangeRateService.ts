@@ -35,6 +35,7 @@ export class ExchangeRateService {
       priority: 3
     }
   ];
+  
 
   static async getExchangeRates(baseCurrency: string = 'USD'): Promise<ExchangeRateResponse | null> {
     try {

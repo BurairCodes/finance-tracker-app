@@ -256,19 +256,7 @@ export default function ChangePasswordModal({ visible, onClose }: ChangePassword
             </View>
           </View>
 
-          {/* Future Authentication Methods (Placeholder) */}
-          <View style={styles.futureAuthContainer}>
-            <Text style={styles.futureAuthTitle}>Additional Security (Coming Soon)</Text>
-            <View style={styles.futureAuthItem}>
-              <Text style={styles.futureAuthText}>• Email verification for password changes</Text>
-            </View>
-            <View style={styles.futureAuthItem}>
-              <Text style={styles.futureAuthText}>• SMS verification for password changes</Text>
-            </View>
-            <View style={styles.futureAuthItem}>
-              <Text style={styles.futureAuthText}>• Two-factor authentication</Text>
-            </View>
-          </View>
+
         </View>
 
         {/* Footer */}
@@ -399,26 +387,6 @@ const styles = StyleSheet.create({
   requirementMet: {
     color: Theme.colors.success,
     fontWeight: '500',
-  },
-  futureAuthContainer: {
-    backgroundColor: Theme.colors.surface,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 24,
-    opacity: 0.6,
-  },
-  futureAuthTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: Theme.colors.textPrimary,
-    marginBottom: 12,
-  },
-  futureAuthItem: {
-    marginBottom: 6,
-  },
-  futureAuthText: {
-    fontSize: 14,
-    color: Theme.colors.textSecondary,
   },
   footer: {
     flexDirection: 'row',

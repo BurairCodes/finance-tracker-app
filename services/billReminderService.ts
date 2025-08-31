@@ -11,13 +11,16 @@ export interface Bill {
   recurring: boolean;
   category: string;
   notes?: string;
+  paid: boolean;
+  paid_at?: string;
+  paid_amount?: number;
 }
 
 export class BillReminderService {
   // Create a new bill reminder
   static async createBill(
     userId: string,
-    bill: Omit<Bill, 'id' | 'user_id'>
+    bill: Omit<Bill, 'id' | 'user_id' | 'paid' | 'paid_at' | 'paid_amount'>
   ): Promise<{ data: Bill | null; error: string | null }> {
     try {
       const { data, error } = await supabase
@@ -25,6 +28,7 @@ export class BillReminderService {
         .insert({
           ...bill,
           user_id: userId,
+          paid: false,
         })
         .select()
         .single();
@@ -135,6 +139,20 @@ export class BillReminderService {
   // Check for upcoming bills and create reminders
   static async checkUpcomingBills(userId: string): Promise<void> {
     try {
+      // First check if user has any bills at all
+      const { data: userBills, error: billsError } = await supabase
+        .from('bills')
+        .select('id')
+        .eq('user_id', userId)
+        .limit(1);
+
+      if (billsError) throw billsError;
+
+      // If no bills exist, don't create any reminders
+      if (!userBills || userBills.length === 0) {
+        return;
+      }
+
       const now = new Date();
       const threeDaysFromNow = new Date(now);
       threeDaysFromNow.setDate(now.getDate() + 3);
@@ -154,15 +172,30 @@ export class BillReminderService {
           const dueDate = new Date(bill.due_date);
           const daysUntilDue = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 
-          // Create reminder notification
-          await NotificationService.createBillReminder(
-            userId,
-            bill.name,
-            bill.amount,
-            bill.currency,
-            dueDate,
-            daysUntilDue
-          );
+          // Check if we already sent a notification for this bill today
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          
+          const { data: existingNotifications } = await supabase
+            .from('notifications')
+            .select('id')
+            .eq('user_id', userId)
+            .eq('type', 'bill')
+            .ilike('message', `%${bill.name}%`)
+            .gte('created_at', today.toISOString())
+            .limit(1);
+
+          // Only create reminder if no notification was sent today for this bill
+          if (!existingNotifications || existingNotifications.length === 0) {
+            await NotificationService.createBillReminder(
+              userId,
+              bill.name,
+              bill.amount,
+              bill.currency,
+              dueDate,
+              daysUntilDue
+            );
+          }
         }
       }
     } catch (error) {

@@ -11,15 +11,17 @@ import {
 } from 'react-native';
 
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Plus, Target, TriangleAlert as AlertTriangle, CircleCheck as CheckCircle } from 'lucide-react-native';
+import { Plus, Target, CreditCard, TriangleAlert as AlertTriangle, CircleCheck as CheckCircle } from 'lucide-react-native';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useBudgets } from '@/hooks/useBudgets';
+import { useBills } from '@/hooks/useBills';
 import { ExchangeRateService } from '@/services/exchangeRateService';
 import { NotificationService } from '@/services/notificationService';
 import AuthScreen from '@/components/AuthScreen';
 import BudgetModal from '@/components/BudgetModal';
+import BillsList from '@/components/BillsList';
 import Theme from '@/constants/Theme';
 import { Database } from '@/types/database';
 
@@ -30,6 +32,8 @@ export default function BudgetsScreen() {
   const { profile } = useProfile(user?.id);
   const { transactions } = useTransactions(user?.id);
   const { budgets, loading, addBudget, deleteBudget } = useBudgets(user?.id);
+  const { bills, addBill, markBillAsPaid, deleteBill } = useBills(user?.id);
+  const [activeTab, setActiveTab] = useState<'budgets' | 'bills'>('budgets');
   const [showAddModal, setShowAddModal] = useState(false);
   const [budgetSpending, setBudgetSpending] = useState<Record<string, number>>({});
   const [calculatingSpending, setCalculatingSpending] = useState(false);
@@ -113,6 +117,18 @@ export default function BudgetsScreen() {
     }
   };
 
+  const handleAddBill = async (billData: {
+    name: string;
+    amount: number;
+    currency: string;
+    due_date: string;
+    recurring: boolean;
+    category: string;
+    notes?: string;
+  }) => {
+    await addBill(billData);
+  };
+
   const handleDeleteBudget = (id: string) => {
     Alert.alert(
       'Delete Budget',
@@ -151,7 +167,7 @@ export default function BudgetsScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Budgets</Text>
+        <Text style={styles.title}>Financial Planning</Text>
         <TouchableOpacity
           style={styles.addButton}
           onPress={() => setShowAddModal(true)}
@@ -160,84 +176,127 @@ export default function BudgetsScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.budgetsList}>
-        {loading ? (
-          <Text style={styles.loadingText}>Loading budgets...</Text>
-        ) : calculatingSpending ? (
-          <Text style={styles.loadingText}>Calculating spending...</Text>
-        ) : budgets.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Target size={48} color="#9CA3AF" />
-            <Text style={styles.emptyText}>No budgets set</Text>
-            <Text style={styles.emptySubtext}>
-              Create budgets to track your spending
-            </Text>
-          </View>
-        ) : (
-          budgets.map((budget) => {
-            const spent = budgetSpending[budget.category] || 0;
-            const { status, color, icon: StatusIcon } = getBudgetStatus(budget, spent);
-            const percentage = Math.min((spent / budget.amount) * 100, 100);
+      <View style={styles.tabSelector}>
+        <TouchableOpacity
+          style={[
+            styles.tabButton,
+            activeTab === 'budgets' && styles.tabButtonActive
+          ]}
+          onPress={() => setActiveTab('budgets')}
+        >
+          <Target size={20} color={activeTab === 'budgets' ? Theme.colors.primary : Theme.colors.textTertiary} />
+          <Text style={[
+            styles.tabButtonText,
+            activeTab === 'budgets' && styles.tabButtonTextActive
+          ]}>
+            Budgets
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[
+            styles.tabButton,
+            activeTab === 'bills' && styles.tabButtonActive
+          ]}
+          onPress={() => setActiveTab('bills')}
+        >
+          <CreditCard size={20} color={activeTab === 'bills' ? Theme.colors.primary : Theme.colors.textTertiary} />
+          <Text style={[
+            styles.tabButtonText,
+            activeTab === 'bills' && styles.tabButtonTextActive
+          ]}>
+            Bills ({bills.length})
+          </Text>
+        </TouchableOpacity>
+      </View>
 
-            return (
-              <TouchableOpacity
-                key={budget.id}
-                style={styles.budgetCard}
-                onLongPress={() => handleDeleteBudget(budget.id)}
-              >
-                <View style={styles.budgetHeader}>
-                  <View style={styles.budgetInfo}>
-                    <Text style={styles.budgetCategory}>{budget.category}</Text>
-                    <Text style={styles.budgetPeriod}>{budget.period}</Text>
-                  </View>
-                  <View style={[styles.statusIcon, { backgroundColor: `${color}20` }]}>
-                    <StatusIcon size={20} color={color} />
-                  </View>
-                </View>
+      {activeTab === 'budgets' ? (
+        <ScrollView style={styles.budgetsList}>
+          {loading ? (
+            <Text style={styles.loadingText}>Loading budgets...</Text>
+          ) : calculatingSpending ? (
+            <Text style={styles.loadingText}>Calculating spending...</Text>
+          ) : budgets.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Target size={48} color="#9CA3AF" />
+              <Text style={styles.emptyText}>No budgets set</Text>
+              <Text style={styles.emptySubtext}>
+                Create budgets to track your spending
+              </Text>
+            </View>
+          ) : (
+            budgets.map((budget) => {
+              const spent = budgetSpending[budget.category] || 0;
+              const { status, color, icon: StatusIcon } = getBudgetStatus(budget, spent);
+              const percentage = Math.min((spent / budget.amount) * 100, 100);
 
-                <View style={styles.budgetProgress}>
-                  <View style={styles.progressBar}>
-                    <View 
-                      style={[
-                        styles.progressFill, 
-                        { width: `${percentage}%`, backgroundColor: color }
-                      ]} 
-                    />
+              return (
+                <TouchableOpacity
+                  key={budget.id}
+                  style={styles.budgetCard}
+                  onLongPress={() => handleDeleteBudget(budget.id)}
+                >
+                  <View style={styles.budgetHeader}>
+                    <View style={styles.budgetInfo}>
+                      <Text style={styles.budgetCategory}>{budget.category}</Text>
+                      <Text style={styles.budgetPeriod}>{budget.period}</Text>
+                    </View>
+                    <View style={[styles.statusIcon, { backgroundColor: `${color}20` }]}>
+                      <StatusIcon size={20} color={color} />
+                    </View>
                   </View>
-                  <Text style={styles.progressText}>{percentage.toFixed(1)}%</Text>
-                </View>
 
-                <View style={styles.budgetAmounts}>
-                  <Text style={styles.spentAmount}>
-                    Spent: {ExchangeRateService.formatCurrency(spent, budget.currency)}
+                  <View style={styles.budgetProgress}>
+                    <View style={styles.progressBar}>
+                      <View 
+                        style={[
+                          styles.progressFill, 
+                          { width: `${percentage}%`, backgroundColor: color }
+                        ]} 
+                      />
+                    </View>
+                    <Text style={styles.progressText}>{percentage.toFixed(1)}%</Text>
+                  </View>
+
+                  <View style={styles.budgetAmounts}>
+                    <Text style={styles.spentAmount}>
+                      Spent: {ExchangeRateService.formatCurrency(spent, budget.currency)}
+                    </Text>
+                    <Text style={styles.budgetAmount}>
+                      Budget: {ExchangeRateService.formatCurrency(budget.amount, budget.currency)}
+                    </Text>
+                  </View>
+
+                  <Text style={styles.remainingAmount}>
+                    Remaining: {ExchangeRateService.formatCurrency(
+                      Math.max(0, budget.amount - spent), 
+                      budget.currency
+                    )}
                   </Text>
-                  <Text style={styles.budgetAmount}>
-                    Budget: {ExchangeRateService.formatCurrency(budget.amount, budget.currency)}
-                  </Text>
-                </View>
-
-                <Text style={styles.remainingAmount}>
-                  Remaining: {ExchangeRateService.formatCurrency(
-                    Math.max(0, budget.amount - spent), 
-                    budget.currency
+                  
+                  {budget.currency !== (profile?.base_currency || 'PKR') && (
+                    <Text style={styles.currencyNote}>
+                      Budget in {budget.currency} - amounts shown in budget currency
+                    </Text>
                   )}
-                </Text>
-                
-                {budget.currency !== (profile?.base_currency || 'PKR') && (
-                  <Text style={styles.currencyNote}>
-                    Budget in {budget.currency} - amounts shown in budget currency
-                  </Text>
-                )}
-              </TouchableOpacity>
-            );
-          })
-        )}
-      </ScrollView>
+                </TouchableOpacity>
+              );
+            })
+          )}
+        </ScrollView>
+      ) : (
+        <BillsList
+          bills={bills}
+          onMarkAsPaid={markBillAsPaid}
+          onDelete={deleteBill}
+          profileCurrency={profile?.base_currency}
+        />
+      )}
 
       <BudgetModal
         visible={showAddModal}
         onClose={() => setShowAddModal(false)}
         onSave={handleAddBudget}
+        onSaveBill={handleAddBill}
         existingCategories={budgets.map(b => b.category)}
       />
     </SafeAreaView>
@@ -271,6 +330,37 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     ...Theme.shadows.md,
+  },
+  tabSelector: {
+    flexDirection: 'row',
+    backgroundColor: Theme.colors.surface,
+    borderRadius: 16,
+    padding: 6,
+    margin: Theme.spacing.lg,
+    height: 56,
+  },
+  tabButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 8,
+  },
+  tabButtonActive: {
+    backgroundColor: Theme.colors.card,
+    ...Theme.shadows.sm,
+  },
+  tabButtonText: {
+    fontSize: 16,
+    color: Theme.colors.textTertiary,
+    fontFamily: Theme.typography.fontFamily.medium,
+    fontWeight: '500',
+  },
+  tabButtonTextActive: {
+    color: Theme.colors.textPrimary,
+    fontFamily: Theme.typography.fontFamily.medium,
   },
   budgetsList: {
     flex: 1,

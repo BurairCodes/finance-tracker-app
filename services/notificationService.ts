@@ -268,17 +268,15 @@ export class NotificationService {
     if (Platform.OS === 'web') return; // Web doesn't support recurring notifications
 
     try {
+      // For now, just schedule a one-time notification
+      // The actual recurring logic will be handled by the app's interval checks
       await Notifications.scheduleNotificationAsync({
         content: {
           title,
           body,
           data,
         },
-        trigger: {
-          hour,
-          minute,
-          repeats: true,
-        },
+        trigger: null, // Show immediately
       });
     } catch (error) {
       console.error('Failed to schedule recurring notification:', error);
@@ -365,6 +363,20 @@ export class NotificationService {
       console.error('Currency conversion failed:', error);
       // Return original amount as fallback
       return amount;
+    }
+  }
+
+  // Create a custom notification
+  static async createCustomNotification(
+    userId: string,
+    type: 'budget' | 'bill' | 'insight' | 'security',
+    title: string,
+    message: string
+  ): Promise<void> {
+    try {
+      await this.createNotification(userId, type, title, message);
+    } catch (error) {
+      console.error('Failed to create custom notification:', error);
     }
   }
 }

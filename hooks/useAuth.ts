@@ -22,18 +22,11 @@ export function useAuth() {
       setUser(session?.user ?? null);
       setLoading(false);
       
-      // Security alerts for suspicious activities
+      // Security alerts for suspicious activities only
       if (session?.user && previousUser?.id !== session.user.id) {
-        try {
-          // New login detected
-          await NotificationService.createSecurityAlert(
-            session.user.id,
-            'login',
-            `New login detected from ${Platform.OS} device. If this wasn't you, please review your account security.`
-          );
-        } catch (error) {
-          console.error('Failed to create security alert:', error);
-        }
+        // Only create security alert for suspicious activities, not regular logins
+        // This will be handled by actual security events (failed login attempts, etc.)
+        console.log('User logged in:', session.user.email);
       }
     });
 

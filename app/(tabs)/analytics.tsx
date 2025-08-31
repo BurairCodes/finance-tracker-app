@@ -25,19 +25,32 @@ export default function AnalyticsScreen() {
   const { profile } = useProfile(user?.id);
   const { transactions, loading } = useTransactions(user?.id);
   const [categoryData, setCategoryData] = useState<Array<{ category: string; amount: number; percentage: number }>>([]);
-  const [monthlyTrend, setMonthlyTrend] = useState<Array<{ month: string; amount: number }>>([]);
+  const [monthlyTrend, setMonthlyTrend] = useState<Array<{ month: string; monthKey: string; amount: number }>>([]);
   const [anomalies, setAnomalies] = useState<any[]>([]);
   const [forecast, setForecast] = useState(0);
 
   useEffect(() => {
-    if (transactions.length > 0) {
+    if (transactions.length > 0 && !loading) {
       analyzeTransactions();
       generateWeeklyInsights();
     }
-  }, [transactions, profile]);
+  }, [transactions, profile, loading]);
 
   const generateWeeklyInsights = async () => {
     if (!user?.id || transactions.length === 0) return;
+    
+    // Guard: only generate insights if there are at least 5 transactions in the past month
+    const oneMonthAgo = new Date();
+    oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+    
+    const recentTransactions = transactions.filter(t => {
+      const transactionDate = new Date(t.date);
+      return transactionDate >= oneMonthAgo;
+    });
+    
+    if (recentTransactions.length < 5) {
+      return; // Not enough data for meaningful insights
+    }
     
     try {
       const currentWeek = new Date();
@@ -57,6 +70,11 @@ export default function AnalyticsScreen() {
                transactionDate >= weekStart && 
                transactionDate <= currentWeek;
       });
+      
+      // Guard: only create insights if there's actual spending or income
+      if (weeklyExpenses.length === 0 && weeklyIncome.length === 0) {
+        return;
+      }
       
       let totalExpenses = 0;
       let totalIncome = 0;
@@ -110,26 +128,30 @@ export default function AnalyticsScreen() {
       // Calculate savings rate
       const savingsRate = totalIncome > 0 ? ((totalIncome - totalExpenses) / totalIncome) * 100 : 0;
       
-      // Create weekly insight notification
-      await NotificationService.createWeeklyInsight(
-        user.id,
-        totalExpenses,
-        totalIncome,
-        userBaseCurrency,
-        topCategory?.[0] || 'None',
-        savingsRate
-      );
-
-      // Also create a monthly insight notification
-      try {
-        await NotificationService.createNotification(
+      // Create weekly insight notification only if there's meaningful data
+      if (totalExpenses > 0 || totalIncome > 0) {
+        await NotificationService.createWeeklyInsight(
           user.id,
-          'insight',
-          '📈 Monthly Spending Overview',
-          `This month you've spent ${userBaseCurrency} ${totalExpenses.toLocaleString()}. Top category: ${topCategory?.[0] || 'None'}`
+          totalExpenses,
+          totalIncome,
+          userBaseCurrency,
+          topCategory?.[0] || 'None',
+          savingsRate
         );
-      } catch (error) {
-        console.error('Failed to create monthly insight notification:', error);
+      }
+
+      // Also create a monthly insight notification only if there's meaningful data
+      if (totalExpenses > 0 || totalIncome > 0) {
+        try {
+          await NotificationService.createNotification(
+            user.id,
+            'insight',
+            '📈 Monthly Spending Overview',
+            `This month you've spent ${userBaseCurrency} ${totalExpenses.toLocaleString()}. Top category: ${topCategory?.[0] || 'None'}`
+          );
+        } catch (error) {
+          console.error('Failed to create monthly insight notification:', error);
+        }
       }
       
     } catch (error) {
@@ -138,6 +160,8 @@ export default function AnalyticsScreen() {
   };
 
   const analyzeTransactions = async () => {
+    console.log('Analyzing transactions...', { transactionsLength: transactions.length, loading });
+    
     // Category breakdown for current month
     const currentMonth = new Date().getMonth();
     const currentYear = new Date().getFullYear();
@@ -218,8 +242,9 @@ export default function AnalyticsScreen() {
       }
     }
 
-    const trendData = months.map(({ key, name }) => ({
+    const trendData = months.map(({ key, name }, index) => ({
       month: name,
+      monthKey: `trend-${index}`, // Use simple index-based key
       amount: monthlyData[key],
     }));
 
@@ -318,7 +343,7 @@ export default function AnalyticsScreen() {
                   const height = maxAmount > 0 ? (item.amount / maxAmount) * 100 : 0;
                   
                   return (
-                    <View key={item.month} style={styles.trendBar}>
+                    <View key={item.monthKey} style={styles.trendBar}>
                       <View style={styles.trendBarContainer}>
                         <View 
                           style={[

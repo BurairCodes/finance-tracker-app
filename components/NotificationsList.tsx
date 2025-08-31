@@ -38,54 +38,7 @@ const NotificationsList: React.FC = () => {
     clearAllNotifications,
   } = useNotifications();
 
-  // Automatically generate notifications when component mounts
-  React.useEffect(() => {
-    if (user?.id && notifications.length === 0) {
-      generateInitialNotifications();
-    }
-  }, [user?.id, notifications.length]);
-
-  const generateInitialNotifications = async () => {
-    if (!user?.id) return;
-    
-    try {
-      // Generate a budget alert notification
-      await NotificationService.createNotification(
-        user.id,
-        'budget',
-        '💰 Budget Management',
-        'Set up your first budget to start tracking your spending and get alerts when you approach limits.'
-      );
-      
-      // Generate a bill reminder notification
-      await NotificationService.createNotification(
-        user.id,
-        'bill',
-        '📅 Bill Reminders',
-        'Add your recurring bills to get timely reminders and never miss a payment again.'
-      );
-      
-      // Generate a weekly insight notification
-      await NotificationService.createNotification(
-        user.id,
-        'insight',
-        '📊 Financial Insights',
-        'Track your spending patterns and get weekly insights to improve your financial health.'
-      );
-      
-      // Generate a security alert notification
-      await NotificationService.createCustomSecurityAlert(
-        user.id,
-        '🔒 Account Security',
-        'Your account is protected with secure authentication. Enable 2FA for additional security.'
-      );
-      
-      // Refresh the notifications list
-      fetchNotifications();
-    } catch (error) {
-      console.error('Failed to generate initial notifications:', error);
-    }
-  };
+  // Remove automatic notification generation - notifications should only be created based on real events
 
   const handleMarkAllAsRead = () => {
     Alert.alert(

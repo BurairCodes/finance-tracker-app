@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Database } from '@/types/database';
 import { NotificationService } from '@/services/notificationService';
@@ -11,6 +11,8 @@ export function useBudgets(userId: string | undefined) {
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const lastCheckRef = useRef<number>(0);
+  const checkTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (userId) {
@@ -116,9 +118,16 @@ export function useBudgets(userId: string | undefined) {
     }
   };
 
-  // Check budget status and create notifications
+  // Check budget status and create notifications with debouncing
   const checkBudgetStatus = useCallback(async () => {
     if (!userId) return;
+
+    // Debounce: only check once every 5 minutes
+    const now = Date.now();
+    if (now - lastCheckRef.current < 5 * 60 * 1000) {
+      return;
+    }
+    lastCheckRef.current = now;
 
     try {
       // Get all budgets and their current spending
@@ -199,11 +208,25 @@ export function useBudgets(userId: string | undefined) {
     }
   }, [budgets, userId]);
 
-  // Check budget status when budgets change
+  // Debounced budget status check when budgets change
   useEffect(() => {
     if (budgets.length > 0) {
-      checkBudgetStatus();
+      // Clear any existing timeout
+      if (checkTimeoutRef.current) {
+        clearTimeout(checkTimeoutRef.current);
+      }
+      
+      // Set a new timeout to debounce the check
+      checkTimeoutRef.current = setTimeout(() => {
+        checkBudgetStatus();
+      }, 2000) as unknown as NodeJS.Timeout; // Wait 2 seconds after budgets change
     }
+
+    return () => {
+      if (checkTimeoutRef.current) {
+        clearTimeout(checkTimeoutRef.current);
+      }
+    };
   }, [budgets, checkBudgetStatus]);
 
   return {

@@ -94,13 +94,26 @@ export function useTransactions(userId: string | undefined) {
           .select('*', { count: 'exact', head: true })
           .eq('user_id', userId);
         
+        // Only create notification if this is the first transaction AND there's meaningful activity
         if (count === 1) {
-          await NotificationService.createNotification(
-            userId,
-            'insight',
-            '🎉 First Transaction Added!',
-            'Great! You\'ve started tracking your finances. Add more transactions to see spending patterns and insights.'
-          );
+          // Check if there are at least 5 transactions in the past month for meaningful insights
+          const oneMonthAgo = new Date();
+          oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+          
+          const { count: recentCount } = await supabase
+            .from('transactions')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', userId)
+            .gte('date', oneMonthAgo.toISOString());
+          
+          if (recentCount && recentCount >= 5) {
+            await NotificationService.createNotification(
+              userId,
+              'insight',
+              '🎉 First Transaction Added!',
+              'Great! You\'ve started tracking your finances. Add more transactions to see spending patterns and insights.'
+            );
+          }
         }
       } catch (notificationError) {
         console.error('Failed to create transaction notification:', notificationError);

@@ -33,7 +33,9 @@ import AuthScreen from '@/components/AuthScreen';
 import ProfileModal from '@/components/ProfileModal';
 import ChangePasswordModal from '@/components/ChangePasswordModal';
 import NotificationsList from '@/components/NotificationsList';
+import TwoFactorAuthModal from '@/components/TwoFactorAuthModal';
 import { NotificationService } from '@/services/notificationService';
+import { OTPService, OTPConfig } from '@/services/otpService';
 
 import { PDFService } from '@/services/pdfService';
 import { ExportService } from '@/services/exportService';
@@ -54,10 +56,12 @@ export default function SettingsScreen() {
   const [showNotificationModal, setShowNotificationModal] = useState(false);
   const [showSecurityModal, setShowSecurityModal] = useState(false);
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
+  const [show2FAModal, setShow2FAModal] = useState(false);
   const [budgetAlerts, setBudgetAlerts] = useState(true);
   const [dailySummary, setDailySummary] = useState(false);
   const [smsAuth, setSmsAuth] = useState(false);
   const [appAuth, setAppAuth] = useState(false);
+  const [current2FAConfig, setCurrent2FAConfig] = useState<OTPConfig | null>(null);
   const [exportingData, setExportingData] = useState(false);
   const [notificationSettings, setNotificationSettings] = useState({
     budgetAlerts: true,
@@ -231,22 +235,77 @@ export default function SettingsScreen() {
     // In a real app, you'd save these to AsyncStorage or backend
   };
 
-  const handleSecurityToggle = (setting: 'smsAuth' | 'appAuth') => {
-    if (setting === 'smsAuth') {
-      setSmsAuth(!smsAuth);
+  const handleSecurityToggle = async (setting: 'smsAuth' | 'appAuth') => {
+    if (!user) return;
+
+    // If turning off, show confirmation dialog
+    if ((setting === 'smsAuth' && smsAuth) || (setting === 'appAuth' && appAuth)) {
+      const methodName = setting === 'smsAuth' ? 'SMS' : 'App Auth';
+      
       Alert.alert(
-        'SMS Authentication',
-        smsAuth ? 'SMS authentication disabled' : 'SMS authentication enabled',
-        [{ text: 'OK' }]
+        `Disable ${methodName} 2FA`,
+        `Are you sure you want to disable ${methodName} two-factor authentication?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'Disable', 
+            style: 'destructive',
+            onPress: async () => {
+              if (setting === 'smsAuth') {
+                setSmsAuth(false);
+              } else {
+                setAppAuth(false);
+              }
+              
+              // Trigger disable notification
+              const notificationMessage = `❌ ${methodName} 2FA disabled successfully`;
+              try {
+                await NotificationService.createNotification(
+                  user.id,
+                  'security',
+                  'Two-Factor Authentication',
+                  notificationMessage
+                );
+              } catch (error) {
+                console.error('Failed to create disable notification:', error);
+              }
+            }
+          }
+        ]
       );
-    } else {
-      setAppAuth(!appAuth);
-      Alert.alert(
-        'App Authentication',
-        appAuth ? 'App authentication disabled' : 'App authentication enabled',
-        [{ text: 'OK' }]
-      );
+      return;
     }
+
+    // If turning on, start 2FA setup
+    const config: OTPConfig = {
+      userId: user.id,
+      method: setting === 'smsAuth' ? 'sms' : 'app',
+    };
+
+    setCurrent2FAConfig(config);
+    setShow2FAModal(true);
+  };
+
+  const handle2FASuccess = async (method: 'sms' | 'app') => {
+    if (!user) return;
+    
+    if (method === 'sms') {
+      setSmsAuth(true);
+    } else {
+      setAppAuth(true);
+    }
+    
+    setShow2FAModal(false);
+    setCurrent2FAConfig(null);
+    
+    // Success notification is already handled in the modal
+    // This ensures the state is properly updated
+  };
+
+  const handle2FAClose = () => {
+    setShow2FAModal(false);
+    setCurrent2FAConfig(null);
+    OTPService.cancelVerification();
   };
 
   const handleChangePassword = () => {
@@ -395,6 +454,14 @@ export default function SettingsScreen() {
         onClose={() => setShowChangePasswordModal(false)}
       />
 
+      {/* Two-Factor Authentication Modal */}
+      <TwoFactorAuthModal
+        visible={show2FAModal}
+        onClose={handle2FAClose}
+        onSuccess={handle2FASuccess}
+        config={current2FAConfig}
+      />
+
       {/* Notifications Page */}
       <Modal
         visible={showNotificationModal}
@@ -430,11 +497,31 @@ export default function SettingsScreen() {
           </View>
 
           <ScrollView style={styles.modalContent}>
+            {/* Security Status Summary */}
+            <View style={styles.securityStatusContainer}>
+              <Text style={styles.securityStatusTitle}>Security Status</Text>
+              <View style={styles.securityStatusItem}>
+                <Text style={styles.securityStatusLabel}>SMS 2FA:</Text>
+                <Text style={[styles.securityStatusValue, smsAuth && styles.securityStatusActive]}>
+                  {smsAuth ? 'Enabled' : 'Disabled'}
+                </Text>
+              </View>
+              <View style={styles.securityStatusItem}>
+                <Text style={styles.securityStatusLabel}>App Auth 2FA:</Text>
+                <Text style={[styles.securityStatusValue, appAuth && styles.securityStatusActive]}>
+                  {appAuth ? 'Enabled' : 'Disabled'}
+                </Text>
+              </View>
+            </View>
+
             <View style={styles.settingItem}>
               <View style={styles.settingInfo}>
                 <Text style={styles.settingName}>SMS Authentication</Text>
                 <Text style={styles.settingDescription}>
-                  Enable two-factor authentication via SMS
+                  {smsAuth 
+                    ? '✅ SMS 2FA is enabled and active'
+                    : 'Enable two-factor authentication via SMS'
+                  }
                 </Text>
               </View>
               <TouchableOpacity
@@ -449,7 +536,10 @@ export default function SettingsScreen() {
               <View style={styles.settingInfo}>
                 <Text style={styles.settingName}>App Authentication</Text>
                 <Text style={styles.settingDescription}>
-                  Use authenticator app for two-factor authentication
+                  {appAuth 
+                    ? '✅ App Auth 2FA is enabled and active'
+                    : 'Use authenticator app for two-factor authentication'
+                  }
                 </Text>
               </View>
               <TouchableOpacity
@@ -718,6 +808,39 @@ const styles = StyleSheet.create({
     color: Theme.colors.info,
     lineHeight: 20,
     fontFamily: Theme.typography.fontFamily.regular,
+  },
+  securityStatusContainer: {
+    backgroundColor: Theme.colors.surface,
+    padding: Theme.spacing.lg,
+    borderRadius: Theme.borderRadius.md,
+    marginBottom: Theme.spacing.lg,
+    borderWidth: 1,
+    borderColor: Theme.colors.border,
+  },
+  securityStatusTitle: {
+    fontSize: Theme.typography.fontSize.lg,
+    color: Theme.colors.textPrimary,
+    fontFamily: Theme.typography.fontFamily.bold,
+    marginBottom: Theme.spacing.md,
+  },
+  securityStatusItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Theme.spacing.sm,
+  },
+  securityStatusLabel: {
+    fontSize: Theme.typography.fontSize.base,
+    color: Theme.colors.textSecondary,
+    fontFamily: Theme.typography.fontFamily.medium,
+  },
+  securityStatusValue: {
+    fontSize: Theme.typography.fontSize.base,
+    color: Theme.colors.textTertiary,
+    fontFamily: Theme.typography.fontFamily.semiBold,
+  },
+  securityStatusActive: {
+    color: Theme.colors.success,
   },
   clearAllText: {
     fontSize: 14,
