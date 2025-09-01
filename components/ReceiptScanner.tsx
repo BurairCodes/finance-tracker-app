@@ -322,12 +322,19 @@ export default function ReceiptScanner({ isVisible, onClose }: ReceiptScannerPro
                       <DollarSign size={20} color={Theme.colors.primary} />
                       <Text style={styles.dataCardTitle}>Amount</Text>
                     </View>
-                    <Text style={styles.dataCardValue}>
-                      {receiptData.amount && typeof receiptData.amount === 'number' && receiptData.amount > 0
-                        ? ExchangeRateService.formatCurrency(receiptData.amount, receiptData.currency || 'PKR')
-                        : 'Not detected'
-                      }
-                    </Text>
+                                         <Text style={styles.dataCardValue}>
+                       {(() => {
+                         try {
+                           if (receiptData.amount && typeof receiptData.amount === 'number' && receiptData.amount > 0) {
+                             return ExchangeRateService.formatCurrency(receiptData.amount, receiptData.currency || 'PKR');
+                           }
+                           return 'Not detected';
+                         } catch (error) {
+                           console.error('Error formatting amount:', error);
+                           return 'Not detected';
+                         }
+                       })()}
+                     </Text>
                   </View>
 
                   <View style={styles.dataCard}>
@@ -370,12 +377,19 @@ export default function ReceiptScanner({ isVisible, onClose }: ReceiptScannerPro
                         <DollarSign size={20} color={Theme.colors.primary} />
                         <Text style={styles.dataCardTitle}>Tax</Text>
                       </View>
-                      <Text style={styles.dataCardValue}>
-                        {receiptData.tax && typeof receiptData.tax === 'number' && receiptData.tax > 0
-                          ? ExchangeRateService.formatCurrency(receiptData.tax, receiptData.currency || 'PKR')
-                          : '0.00'
-                        }
-                      </Text>
+                                             <Text style={styles.dataCardValue}>
+                         {(() => {
+                           try {
+                             if (receiptData.tax && typeof receiptData.tax === 'number' && receiptData.tax > 0) {
+                               return ExchangeRateService.formatCurrency(receiptData.tax, receiptData.currency || 'PKR');
+                             }
+                             return '0.00';
+                           } catch (error) {
+                             console.error('Error formatting tax:', error);
+                             return '0.00';
+                           }
+                         })()}
+                       </Text>
                     </View>
                   )}
 
@@ -385,12 +399,19 @@ export default function ReceiptScanner({ isVisible, onClose }: ReceiptScannerPro
                         <DollarSign size={20} color={Theme.colors.primary} />
                         <Text style={styles.dataCardTitle}>Total</Text>
                       </View>
-                      <Text style={styles.dataCardValue}>
-                        {receiptData.total && typeof receiptData.total === 'number' && receiptData.total > 0
-                          ? ExchangeRateService.formatCurrency(receiptData.total, receiptData.currency || 'PKR')
-                          : '0.00'
-                        }
-                      </Text>
+                                             <Text style={styles.dataCardValue}>
+                         {(() => {
+                           try {
+                             if (receiptData.total && typeof receiptData.total === 'number' && receiptData.total > 0) {
+                               return ExchangeRateService.formatCurrency(receiptData.total, receiptData.currency || 'PKR');
+                             }
+                             return '0.00';
+                           } catch (error) {
+                             console.error('Error formatting total:', error);
+                             return '0.00';
+                           }
+                         })()}
+                       </Text>
                     </View>
                   )}
                 </View>

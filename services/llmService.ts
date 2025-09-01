@@ -338,48 +338,65 @@ RULES:
   private static enhancedFallbackProcessing(rawText: string, userCurrency: string): LLMReceiptData {
     console.log('🔧 Using enhanced fallback processing...');
     
-    const text = rawText.toLowerCase();
-    
-    // Enhanced amount extraction with multiple strategies
-    const extractedAmount = this.extractAmountEnhanced(text);
-    
-    // Enhanced merchant extraction
-    const merchant = this.extractMerchantEnhanced(rawText);
-    
-    // Enhanced date extraction
-    const date = this.extractDateEnhanced(rawText);
-    
-    // Enhanced category detection
-    const category = this.categorizeReceiptEnhanced(text);
-    
-    // Enhanced items extraction
-    const items = this.extractItemsEnhanced(rawText);
-    
-    // Enhanced currency detection
-    const detectedCurrency = this.extractCurrencyEnhanced(rawText);
-    
-    // Enhanced tax extraction
-    const extractedTax = this.extractTaxEnhanced(text);
-    
-    // Convert amounts to user's currency if different
-    const amount = this.convertToUserCurrency(extractedAmount, detectedCurrency, userCurrency);
-    const tax = this.convertToUserCurrency(extractedTax, detectedCurrency, userCurrency);
-    const total = amount; // Total is same as amount for now
-    
-    // Calculate confidence based on extraction quality
-    const confidence = this.calculateConfidence(rawText, amount, merchant, items);
+    try {
+      const text = rawText.toLowerCase();
+      
+      // Enhanced amount extraction with multiple strategies
+      const extractedAmount = this.extractAmountEnhanced(text);
+      
+      // Enhanced merchant extraction
+      const merchant = this.extractMerchantEnhanced(rawText);
+      
+      // Enhanced date extraction
+      const date = this.extractDateEnhanced(rawText);
+      
+      // Enhanced category detection
+      const category = this.categorizeReceiptEnhanced(text);
+      
+      // Enhanced items extraction
+      const items = this.extractItemsEnhanced(rawText);
+      
+      // Enhanced currency detection
+      const detectedCurrency = this.extractCurrencyEnhanced(rawText);
+      
+      // Enhanced tax extraction
+      const extractedTax = this.extractTaxEnhanced(text);
+      
+      // Convert amounts to user's currency if different
+      const amount = this.convertToUserCurrency(extractedAmount, detectedCurrency, userCurrency);
+      const tax = this.convertToUserCurrency(extractedTax, detectedCurrency, userCurrency);
+      const total = amount; // Total is same as amount for now
+      
+      // Calculate confidence based on extraction quality
+      const confidence = this.calculateConfidence(rawText, amount, merchant, items);
 
-    return {
-      amount,
-      merchant,
-      date,
-      category,
-      items,
-      confidence,
-      currency: userCurrency,
-      tax,
-      total,
-    };
+      // Ensure all values are valid types
+      return {
+        amount: typeof amount === 'number' && !isNaN(amount) ? amount : 0,
+        merchant: typeof merchant === 'string' ? merchant : 'Unknown Merchant',
+        date: typeof date === 'string' ? date : new Date().toISOString().split('T')[0],
+        category: typeof category === 'string' ? category : 'Other',
+        items: Array.isArray(items) ? items : [],
+        confidence: typeof confidence === 'number' && !isNaN(confidence) ? Math.max(0, Math.min(1, confidence)) : 0.5,
+        currency: typeof userCurrency === 'string' ? userCurrency : 'PKR',
+        tax: typeof tax === 'number' && !isNaN(tax) ? tax : 0,
+        total: typeof total === 'number' && !isNaN(total) ? total : 0,
+      };
+    } catch (error) {
+      console.error('❌ Error in enhanced fallback processing:', error);
+      // Return safe default values
+      return {
+        amount: 0,
+        merchant: 'Unknown Merchant',
+        date: new Date().toISOString().split('T')[0],
+        category: 'Other',
+        items: [],
+        confidence: 0.3,
+        currency: userCurrency || 'PKR',
+        tax: 0,
+        total: 0,
+      };
+    }
   }
 
   private static convertToUserCurrency(amount: number, fromCurrency: string, toCurrency: string): number {
