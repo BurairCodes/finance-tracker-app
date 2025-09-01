@@ -11,6 +11,7 @@ import {
   Platform,
   Dimensions,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -419,6 +420,12 @@ export default function SettingsScreen() {
 
         {/* App Info */}
         <View style={styles.appInfo}>
+          <Image
+            source={require('@/assets/images/kharchax-logo.png')}
+            style={styles.appLogo}
+            resizeMode="contain"
+          />
+          <Text style={styles.appName}>KharchaX</Text>
           <Text style={styles.appVersion}>v1.0.0</Text>
         </View>
       </ScrollView>
@@ -685,6 +692,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: Theme.spacing.md,
     paddingTop: Theme.spacing.xs,
+  },
+  appLogo: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    marginBottom: Theme.spacing.sm,
+  },
+  appName: {
+    fontSize: Theme.typography.fontSize.lg,
+    color: Theme.colors.textPrimary,
+    marginBottom: Theme.spacing.xs,
+    fontFamily: Theme.typography.fontFamily.bold,
   },
   appVersion: {
     fontSize: Theme.typography.fontSize.sm,

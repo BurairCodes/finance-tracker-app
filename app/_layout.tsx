@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { 
@@ -12,12 +12,14 @@ import {
 import * as SplashScreen from 'expo-splash-screen';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import CustomSplashScreen from '@/components/SplashScreen';
 
 // Prevent splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   useFrameworkReady();
+  const [showCustomSplash, setShowCustomSplash] = useState(true);
 
   const [fontsLoaded, fontError] = useFonts({
     'Poppins-Light': Poppins_300Light,
@@ -33,8 +35,16 @@ export default function RootLayout() {
     }
   }, [fontsLoaded, fontError]);
 
+  const handleSplashFinish = () => {
+    setShowCustomSplash(false);
+  };
+
   if (!fontsLoaded && !fontError) {
     return null;
+  }
+
+  if (showCustomSplash) {
+    return <CustomSplashScreen onFinish={handleSplashFinish} />;
   }
 
   return (

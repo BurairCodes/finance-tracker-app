@@ -9,6 +9,7 @@ import {
   Platform,
   Dimensions,
   Animated,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -197,8 +198,18 @@ export default function DashboardScreen() {
         }
       >
         <View style={styles.header}>
+          <View style={styles.headerTop}>
+            <View style={styles.logoContainer}>
+              <Image
+                source={require('@/assets/images/kharchax-logo.png')}
+                style={styles.logo}
+                resizeMode="contain"
+              />
+              <Text style={styles.appName}>KharchaX</Text>
+            </View>
+          </View>
           <Text style={styles.greeting}>Welcome Back!</Text>
-                          <Text style={styles.userName}>{profile?.full_name || user.user_metadata?.full_name || 'User'}</Text>
+          <Text style={styles.userName}>{profile?.full_name || user.user_metadata?.full_name || 'User'}</Text>
         </View>
 
         {budgetAlerts.length > 0 && (
@@ -427,6 +438,27 @@ const styles = StyleSheet.create({
   header: {
     padding: Theme.spacing.lg,
     paddingBottom: Theme.spacing.sm,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: Theme.spacing.md,
+  },
+  logoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  logo: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: Theme.spacing.sm,
+  },
+  appName: {
+    fontSize: Theme.typography.fontSize.xl,
+    color: Theme.colors.textPrimary,
+    fontFamily: Theme.typography.fontFamily.bold,
   },
   greeting: {
     fontSize: Theme.typography.fontSize.base,

@@ -1,7 +1,7 @@
 <<<<<<< HEAD
-# 💰 Finance Tracker App
+# 💰 KharchaX - Smart Finance Manager
 
-A comprehensive personal finance management application built with React Native, Expo, and Supabase.
+KharchaX is a comprehensive personal finance management application built with React Native, Expo, and Supabase. It helps users track income and expenses, set budgets, analyze spending patterns, and manage financial goals with AI-powered insights.
 
 ## 🚀 Features
 

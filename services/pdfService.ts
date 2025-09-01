@@ -121,7 +121,7 @@ export class PDFService {
       </head>
       <body>
         <div class="header">
-          <h1 class="title">Smart Finance Manager</h1>
+          <h1 class="title">KharchaX</h1>
           <p class="subtitle">Monthly Financial Report - ${monthName}</p>
           <p class="subtitle">Generated for: ${userEmail}</p>
         </div>
@@ -167,7 +167,7 @@ export class PDFService {
 
         <div class="footer">
           <p>Generated on ${new Date().toLocaleDateString()}</p>
-          <p>Smart Finance Manager - AI-Powered Personal Finance</p>
+          <p>KharchaX - AI-Powered Personal Finance</p>
         </div>
       </body>
       </html>

@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "Finance Tracker",
-    "slug": "finance-tracker",
+    "name": "KharchaX",
+    "slug": "kharchax",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
-    "scheme": "finance-tracker",
+    "icon": "./assets/images/kharchax-logo.png",
+    "scheme": "kharchax",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "platforms": [
@@ -15,19 +15,19 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.financetracker.app"
+      "bundleIdentifier": "com.kharchax.app"
     },
     "android": {
-      "package": "com.financetracker.app",
+      "package": "com.kharchax.app",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/icon.png",
+        "foregroundImage": "./assets/images/kharchax-logo.png",
         "backgroundColor": "#0F0F23"
       }
     },
     "web": {
       "bundler": "metro",
       "output": "single",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/kharchax-logo.png"
     },
     "plugins": [
       "expo-router",
@@ -36,7 +36,7 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/images/icon.png",
+          "icon": "./assets/images/kharchax-logo.png",
           "color": "#8B5CF6"
         }
       ]
