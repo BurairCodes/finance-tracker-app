@@ -92,7 +92,7 @@ export default function FinanceCoach() {
       currentInsights.push({
         id: 'high-spending',
         title: 'High Daily Spending',
-        description: `You're spending an average of ${ExchangeRateService.formatCurrency(avgDailySpending, 'PKR')} per day this month. Consider reviewing your daily expenses.`,
+        description: `You&apos;re spending an average of ${ExchangeRateService.formatCurrency(avgDailySpending, 'PKR')} per day this month. Consider reviewing your daily expenses.`,
         type: 'warning',
         icon: TrendingUp,
         action: 'How can I reduce my daily spending?'
@@ -243,7 +243,7 @@ export default function FinanceCoach() {
         {/* Financial Insights */}
         {insights.length > 0 && (
           <View style={styles.insightsSection}>
-            <Text style={styles.sectionTitle}>Today's Insights</Text>
+            <Text style={styles.sectionTitle}>Today&apos;s Insights</Text>
             {insights.map((insight) => (
               <TouchableOpacity
                 key={insight.id}
