@@ -57,6 +57,7 @@ export default function ReceiptScanner({ isVisible, onClose }: ReceiptScannerPro
   const [receiptData, setReceiptData] = useState<ReceiptData | null>(null);
   const [showTransactionModal, setShowTransactionModal] = useState(false);
   const [showRawText, setShowRawText] = useState(false);
+  const [processingMethod, setProcessingMethod] = useState<'gemini' | 'enhanced'>('gemini');
   const [manualData, setManualData] = useState({
     amount: '',
     merchant: '',
@@ -79,12 +80,12 @@ export default function ReceiptScanner({ isVisible, onClose }: ReceiptScannerPro
           
           <View style={styles.webContainer}>
             <View style={styles.webIconContainer}>
-              <LinearGradient
-                colors={Theme.colors.gradientPrimary}
-                style={styles.webIconGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              >
+                              <LinearGradient
+                  colors={Theme.colors.gradientPrimary as [string, string]}
+                  style={styles.webIconGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
                 <Smartphone size={64} color="#FFFFFF" />
               </LinearGradient>
             </View>
@@ -128,6 +129,13 @@ export default function ReceiptScanner({ isVisible, onClose }: ReceiptScannerPro
     try {
       const userCurrency = profile?.base_currency || 'PKR';
       const receiptData = await OCRService.analyzeReceipt(imageBase64, userCurrency);
+      
+      // Set processing method based on confidence
+      if (receiptData.confidence > 0.7) {
+        setProcessingMethod('gemini');
+      } else {
+        setProcessingMethod('enhanced');
+      }
       
       setReceiptData(receiptData);
       setManualData({
@@ -219,7 +227,7 @@ export default function ReceiptScanner({ isVisible, onClose }: ReceiptScannerPro
             <View style={styles.uploadArea}>
               <View style={styles.iconContainer}>
                 <LinearGradient
-                  colors={Theme.colors.gradientPrimary}
+                  colors={Theme.colors.gradientPrimary as [string, string]}
                   style={styles.iconGradient}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
@@ -254,7 +262,7 @@ export default function ReceiptScanner({ isVisible, onClose }: ReceiptScannerPro
                 disabled={isScanning}
               >
                 <LinearGradient
-                  colors={Theme.colors.gradientPrimary}
+                  colors={Theme.colors.gradientPrimary as [string, string]}
                   style={styles.uploadButtonGradient}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
@@ -315,7 +323,7 @@ export default function ReceiptScanner({ isVisible, onClose }: ReceiptScannerPro
                       <Text style={styles.dataCardTitle}>Amount</Text>
                     </View>
                     <Text style={styles.dataCardValue}>
-                      {receiptData.amount > 0 
+                      {receiptData.amount > 0 && typeof receiptData.amount === 'number'
                         ? ExchangeRateService.formatCurrency(receiptData.amount, receiptData.currency || 'PKR')
                         : 'Not detected'
                       }
@@ -363,7 +371,10 @@ export default function ReceiptScanner({ isVisible, onClose }: ReceiptScannerPro
                         <Text style={styles.dataCardTitle}>Tax</Text>
                       </View>
                       <Text style={styles.dataCardValue}>
-                        {ExchangeRateService.formatCurrency(receiptData.tax, receiptData.currency || 'PKR')}
+                        {typeof receiptData.tax === 'number' && receiptData.tax > 0
+                          ? ExchangeRateService.formatCurrency(receiptData.tax, receiptData.currency || 'PKR')
+                          : '0.00'
+                        }
                       </Text>
                     </View>
                   )}
@@ -375,7 +386,10 @@ export default function ReceiptScanner({ isVisible, onClose }: ReceiptScannerPro
                         <Text style={styles.dataCardTitle}>Total</Text>
                       </View>
                       <Text style={styles.dataCardValue}>
-                        {ExchangeRateService.formatCurrency(receiptData.total, receiptData.currency || 'PKR')}
+                        {typeof receiptData.total === 'number' && receiptData.total > 0
+                          ? ExchangeRateService.formatCurrency(receiptData.total, receiptData.currency || 'PKR')
+                          : '0.00'
+                        }
                       </Text>
                     </View>
                   )}
@@ -414,12 +428,12 @@ export default function ReceiptScanner({ isVisible, onClose }: ReceiptScannerPro
                   style={styles.editButton}
                   onPress={() => setShowTransactionModal(true)}
                 >
-                  <LinearGradient
-                    colors={Theme.colors.gradientPrimary}
-                    style={styles.editButtonGradient}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                  >
+                                  <LinearGradient
+                  colors={Theme.colors.gradientPrimary as [string, string]}
+                  style={styles.editButtonGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
                     <Text style={styles.editButtonText}>Edit & Save Transaction</Text>
                   </LinearGradient>
                 </TouchableOpacity>
@@ -428,8 +442,18 @@ export default function ReceiptScanner({ isVisible, onClose }: ReceiptScannerPro
               <View style={styles.loadingContainer}>
                 <View style={styles.loadingCard}>
                   <ActivityIndicator size="large" color={Theme.colors.primary} />
-                  <Text style={styles.loadingText}>Analyzing receipt with AI...</Text>
-                  <Text style={styles.loadingSubtext}>This may take a few seconds</Text>
+                  <Text style={styles.loadingText}>
+                    {processingMethod === 'gemini' 
+                      ? 'Analyzing receipt with Google Gemini...' 
+                      : 'Processing with enhanced parsing...'
+                    }
+                  </Text>
+                  <Text style={styles.loadingSubtext}>
+                    {processingMethod === 'gemini' 
+                      ? 'This may take a few seconds' 
+                      : 'Almost done...'
+                    }
+                  </Text>
                 </View>
               </View>
             )}

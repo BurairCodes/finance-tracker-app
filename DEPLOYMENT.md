@@ -4,63 +4,12 @@
 
 | Platform | Cost | Difficulty | Features | Best For |
 |----------|------|------------|----------|----------|
-| **Vercel** | Free | Easy | Auto-deploy, custom domain | Web app, team projects |
-| **Netlify** | Free | Easy | Auto-deploy, forms | Web app, static sites |
 | **Expo EAS** | Free/Paid | Medium | Mobile apps, app stores | Mobile deployment |
+| **Netlify** | Free | Easy | Auto-deploy, forms | Web app, static sites |
 | **Railway** | Free/Paid | Medium | Full-stack, databases | Complete solutions |
 | **Heroku** | Free/Paid | Medium | Full-stack, add-ons | Production apps |
 
-## 🌐 Option 1: Vercel (Recommended for Web)
-
-### Setup Steps:
-
-1. **Install Vercel CLI**:
-   ```bash
-   npm install -g vercel
-   ```
-
-2. **Deploy from your project**:
-   ```bash
-   # Make sure you have the web build
-   npm run build:web
-   
-   # Deploy to Vercel
-   vercel
-   ```
-
-3. **Follow the prompts**:
-   - Link to existing project or create new
-   - Choose project name
-   - Deploy
-
-4. **Your app will be live at**: `https://your-app-name.vercel.app`
-
-### Auto-Deploy Setup:
-- Connect your GitHub repository
-- Every push to `main` branch auto-deploys
-- Preview deployments for pull requests
-
-## 🌐 Option 2: Netlify (Alternative Web Hosting)
-
-### Setup Steps:
-
-1. **Build your app**:
-   ```bash
-   npm run build:web
-   ```
-
-2. **Deploy to Netlify**:
-   - Go to [netlify.com](https://netlify.com)
-   - Drag and drop your `dist` folder
-   - Or connect your GitHub repository
-
-3. **Your app will be live at**: `https://random-name.netlify.app`
-
-### Custom Domain:
-- Add your own domain in Netlify settings
-- Free SSL certificate included
-
-## 📱 Option 3: Expo EAS (Mobile Apps)
+## 📱 Option 1: Expo EAS (Mobile Apps) - RECOMMENDED
 
 ### Setup Steps:
 
@@ -100,7 +49,29 @@
    eas submit --platform ios
    ```
 
-## 🚂 Option 4: Railway (Full-Stack)
+## 🌐 Option 2: Netlify (Web Hosting)
+
+### Setup Steps:
+
+1. **Build your app**:
+   ```bash
+   npm run build:web
+   ```
+
+2. **Deploy to Netlify**:
+   - Go to [netlify.com](https://netlify.com)
+   - Drag and drop your `dist` folder
+   - Or connect your GitHub repository
+
+3. **Your app will be live at**: `https://random-name.netlify.app`
+
+### Custom Domain:
+- Add your own domain in Netlify settings
+- Free SSL certificate included
+
+
+
+## 🚂 Option 3: Railway (Full-Stack)
 
 ### Setup Steps:
 
@@ -112,7 +83,7 @@
    - `EXPO_PUBLIC_SUPABASE_ANON_KEY`
    - `EXPO_PUBLIC_EXCHANGE_RATE_API_KEY`
 
-## 🐳 Option 5: Docker Deployment
+## 🐳 Option 4: Docker Deployment
 
 ### Create Dockerfile:
 ```dockerfile
@@ -155,7 +126,7 @@ EXPO_PUBLIC_EXCHANGE_RATE_API_KEY=your_api_key
 
 ### Setting Environment Variables:
 
-**Vercel**:
+**Expo EAS**:
 - Go to Project Settings → Environment Variables
 - Add each variable
 
@@ -192,7 +163,7 @@ app.get('/health', (req, res) => {
 ### GitHub Actions (Auto-Deploy):
 Create `.github/workflows/deploy.yml`:
 ```yaml
-name: Deploy to Vercel
+name: Deploy to EAS
 
 on:
   push:
@@ -212,16 +183,13 @@ jobs:
     - name: Install dependencies
       run: npm install
     
-    - name: Build web app
-      run: npm run build:web
+    - name: Install EAS CLI
+      run: npm install -g @expo/eas-cli
     
-    - name: Deploy to Vercel
-      uses: amondnet/vercel-action@v20
-      with:
-        vercel-token: ${{ secrets.VERCEL_TOKEN }}
-        vercel-org-id: ${{ secrets.ORG_ID }}
-        vercel-project-id: ${{ secrets.PROJECT_ID }}
-        working-directory: ./
+    - name: Deploy to EAS
+      run: |
+        eas login --non-interactive --username ${{ secrets.EXPO_USERNAME }} --password ${{ secrets.EXPO_PASSWORD }}
+        eas build --platform all --non-interactive
 ```
 
 ## 🚨 Production Checklist
@@ -246,7 +214,7 @@ jobs:
 ## 💰 Cost Optimization
 
 ### Free Tier Limits:
-- **Vercel**: 100GB bandwidth/month
+- **Expo EAS**: 30 builds/month (free tier)
 - **Netlify**: 100GB bandwidth/month
 - **Railway**: $5 credit/month
 - **Heroku**: 550-1000 dyno hours/month
@@ -296,33 +264,26 @@ npm run build:web -- --clear
 ## 🎯 Recommended Deployment Strategy
 
 ### For Development Team:
-1. **Web**: Deploy to Vercel (free, auto-deploy)
-2. **Mobile**: Use Expo EAS for testing builds
-3. **Database**: Keep Supabase (free tier)
-4. **Monitoring**: Add basic analytics
+1. **Mobile**: Use Expo EAS for testing builds
+2. **Database**: Keep Supabase (free tier)
+3. **Monitoring**: Add basic analytics
 
 ### For Production:
-1. **Web**: Vercel Pro or Netlify Pro
-2. **Mobile**: App Store deployment
-3. **Database**: Supabase Pro
-4. **Monitoring**: Full analytics suite
+1. **Mobile**: App Store deployment
+2. **Database**: Supabase Pro
+3. **Monitoring**: Full analytics suite
 
 ---
 
 ## 🚀 Quick Start Commands
 
 ```bash
-# Build for web
-npm run build:web
-
-# Deploy to Vercel (first time)
-vercel
-
-# Deploy to Vercel (subsequent times)
-vercel --prod
-
 # Build for mobile
 eas build --platform all
+
+# Submit to app stores
+eas submit --platform android
+eas submit --platform ios
 
 # Start development server
 npm start

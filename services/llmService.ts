@@ -1,5 +1,6 @@
 import { ReceiptData } from './ocrService';
 import axios from 'axios';
+import Constants from 'expo-constants';
 
 interface LLMReceiptData {
   amount: number;
@@ -14,226 +15,312 @@ interface LLMReceiptData {
 }
 
 export class LLMService {
-  // Multiple free LLM endpoints to try (prioritized by reliability)
-  private static readonly LLM_ENDPOINTS = [
-    // OpenAI (Most Reliable)
-    {
-      name: 'OpenAI GPT-3.5',
-      url: 'https://api.openai.com/v1/chat/completions',
-      apiKey: process.env.EXPO_PUBLIC_OPENAI_API_KEY,
-      headers: { 'Authorization': `Bearer ${process.env.EXPO_PUBLIC_OPENAI_API_KEY}` },
-      type: 'openai'
-    },
-    // Google AI (Good Free Tier)
-    {
-      name: 'Google Gemini',
-      url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent',
-      apiKey: process.env.EXPO_PUBLIC_GOOGLE_AI_API_KEY,
+  // Google Gemini 2.5 Flash endpoint
+  private static get GEMINI_ENDPOINT() {
+    const googleKey = Constants.expoConfig?.extra?.googleAiApiKey;
+    
+    return {
+      name: 'Google Gemini 2.5 Flash',
+      url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent',
+      apiKey: googleKey,
       headers: { 'Content-Type': 'application/json' },
       type: 'google'
-    },
-    // Hugging Face Models (Fallback)
-    {
-      name: 'HuggingFace GPT2',
-      url: 'https://api-inference.huggingface.co/models/gpt2',
-      apiKey: process.env.EXPO_PUBLIC_HUGGINGFACE_API_KEY,
-      headers: { 'Authorization': `Bearer ${process.env.EXPO_PUBLIC_HUGGINGFACE_API_KEY}` },
-      type: 'huggingface'
-    },
-    {
-      name: 'HuggingFace DistilGPT2',
-      url: 'https://api-inference.huggingface.co/models/distilgpt2',
-      apiKey: process.env.EXPO_PUBLIC_HUGGINGFACE_API_KEY,
-      headers: { 'Authorization': `Bearer ${process.env.EXPO_PUBLIC_HUGGINGFACE_API_KEY}` },
-      type: 'huggingface'
-    },
-    {
-      name: 'HuggingFace GPT-Neo-125M',
-      url: 'https://api-inference.huggingface.co/models/EleutherAI/gpt-neo-125M',
-      apiKey: process.env.EXPO_PUBLIC_HUGGINGFACE_API_KEY,
-      headers: { 'Authorization': `Bearer ${process.env.EXPO_PUBLIC_HUGGINGFACE_API_KEY}` },
-      type: 'huggingface'
-    },
-    {
-      name: 'HuggingFace T5-Small',
-      url: 'https://api-inference.huggingface.co/models/t5-small',
-      apiKey: process.env.EXPO_PUBLIC_HUGGINGFACE_API_KEY,
-      headers: { 'Authorization': `Bearer ${process.env.EXPO_PUBLIC_HUGGINGFACE_API_KEY}` },
-      type: 'huggingface'
-    }
-  ];
+    };
+  }
   
-  private static readonly API_KEY = process.env.EXPO_PUBLIC_HUGGINGFACE_API_KEY;
-
-      static async processReceiptText(rawText: string, userCurrency: string = 'PKR'): Promise<LLMReceiptData> {
-        try {
-          if (!this.API_KEY) {
-            console.log('Hugging Face API key not configured, using enhanced fallback processing');
-            return this.enhancedFallbackProcessing(rawText, userCurrency);
-          }
-
-          // Try multiple LLM endpoints
-          for (const endpoint of this.LLM_ENDPOINTS) {
-            try {
-              console.log(`Trying ${endpoint.name}...`);
-              
-              let response;
-              let result;
-              
-              if (endpoint.type === 'openai') {
-                // OpenAI API format
-                response = await axios.post(endpoint.url, {
-                  model: 'gpt-3.5-turbo',
-                  messages: [
-                    {
-                      role: 'system',
-                      content: 'You are a helpful assistant that extracts information from receipts and returns JSON data.'
-                    },
-                    {
-                      role: 'user',
-                      content: this.createReceiptPrompt(rawText, userCurrency)
-                    }
-                  ],
-                  temperature: 0.1,
-                  max_tokens: 300
-                }, {
-                  headers: {
-                    ...endpoint.headers,
-                    'Content-Type': 'application/json',
-                  },
-                  timeout: 15000,
-                });
-                
-                result = (response.data as any).choices[0]?.message?.content || '';
-                
-              } else if (endpoint.type === 'google') {
-                // Google AI API format
-                response = await axios.post(`${endpoint.url}?key=${endpoint.apiKey}`, {
-                  contents: [
-                    {
-                      parts: [
-                        {
-                          text: this.createReceiptPrompt(rawText, userCurrency)
-                        }
-                      ]
-                    }
-                  ],
-                  generationConfig: {
-                    temperature: 0.1,
-                    maxOutputTokens: 300
-                  }
-                }, {
-                  headers: {
-                    ...endpoint.headers,
-                  },
-                  timeout: 15000,
-                });
-                
-                result = (response.data as any).candidates[0]?.content?.parts[0]?.text || '';
-                
-              } else {
-                // Hugging Face API format
-                response = await axios.post(endpoint.url, {
-                  inputs: this.createReceiptPrompt(rawText, userCurrency),
-                  parameters: {
-                    max_new_tokens: 150,
-                    temperature: 0.1,
-                    return_full_text: false,
-                    do_sample: true,
-                  },
-                }, {
-                  headers: {
-                    ...endpoint.headers,
-                    'Content-Type': 'application/json',
-                  },
-                  timeout: 10000,
-                });
-                
-                result = (response.data as any)[0]?.generated_text || '';
-              }
-
-              const llmData = this.parseLLMResponse(result, rawText, userCurrency);
-              
-              // If LLM processing was successful, return the result
-              if (llmData.confidence > 0.6) {
-                console.log(`${endpoint.name} processing successful`);
-                return llmData;
-              }
-            } catch (llmError: any) {
-              if (llmError.response) {
-                console.log(`${endpoint.name} API error: ${llmError.response.status} - ${llmError.response.statusText}`);
-                console.log('Response data:', llmError.response.data);
-              } else {
-                console.log(`${endpoint.name} processing failed:`, llmError.message);
-              }
-              // Continue to next endpoint
-            }
-          }
-     
-          // If all LLM endpoints fail, throw error instead of falling back
-          throw new Error('All LLM endpoints failed. Please check your API key and try again.');
-        } catch (error) {
-          console.error('LLM service error:', error);
-          throw error; // Don't fallback, let the caller handle it
-        }
+    static async processReceiptText(rawText: string, userCurrency: string = 'PKR'): Promise<LLMReceiptData> {
+    try {
+      const endpoint = this.GEMINI_ENDPOINT;
+      
+      // Check if Google AI API key is configured
+      if (!endpoint.apiKey) {
+        return this.enhancedFallbackProcessing(rawText, userCurrency);
       }
 
-  private static createReceiptPrompt(rawText: string, userCurrency: string): string {
-    return `Analyze this receipt and extract key information. Convert all amounts to ${userCurrency}. Return a JSON object with: amount (total amount in ${userCurrency}), merchant (business name), date (YYYY-MM-DD format), category (Food & Dining, Shopping, Transportation, Healthcare, Entertainment, Bills & Utilities, Education, or Other), items (array of purchased items), currency (${userCurrency}), tax (tax amount in ${userCurrency}), total (total including tax in ${userCurrency}).
+      try {
+        // Google AI API format (following official documentation)
+        const response = await axios.post(`${endpoint.url}?key=${endpoint.apiKey}`, {
+          contents: [
+            {
+              parts: [
+                {
+                  text: this.createReceiptPrompt(rawText, userCurrency)
+                }
+              ]
+            }
+          ],
+          generationConfig: {
+            temperature: 0.1,
+            maxOutputTokens: 300,
+            thinkingConfig: {
+              thinkingBudget: 0 // Disable thinking for faster response
+            }
+          }
+        }, {
+          headers: {
+            ...endpoint.headers,
+          },
+          timeout: 15000,
+        });
+        
+        const result = (response.data as any).candidates[0]?.content?.parts[0]?.text || '';
+        
+        const llmData = this.parseLLMResponse(result, rawText, userCurrency);
+        
+        // If LLM processing was successful, return the result
+        if (llmData.confidence > 0.5) {
+          return llmData;
+        }
+      } catch (llmError: any) {
+        // LLM processing failed, continue to fallback
+      }
+      
+      // If Gemini fails, use enhanced fallback
+      return this.enhancedFallbackProcessing(rawText, userCurrency);
+    } catch (error) {
+      console.error('❌ LLM service error:', error);
+      return this.enhancedFallbackProcessing(rawText, userCurrency);
+    }
+  }
 
-Receipt text:
+  private static createReceiptPrompt(rawText: string, userCurrency: string): string {
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+    
+    return `You are an expert assistant that extracts structured data from OCR text of receipts. Your task is to analyze the receipt text and return ONLY valid JSON.
+
+RECEIPT TEXT:
 ${rawText}
 
-JSON:`;
+INSTRUCTIONS:
+1. Extract the total transaction amount (look for TOTAL, GRAND TOTAL, AMOUNT DUE, etc.)
+2. Identify the merchant/business name using these strategies:
+   - Look at the very top of the receipt (first 1-3 lines)
+   - Search for business names in ALL CAPS or Title Case
+   - Look for store/restaurant names before addresses or phone numbers
+   - Check for brand names like "STARBUCKS", "MCDONALDS", "WALMART"
+   - Ignore lines with dates, times, addresses, phone numbers, or amounts
+   - If multiple possible names, choose the most prominent one
+3. Determine the transaction date (convert to YYYY-MM-DD format)
+4. Categorize the transaction intelligently based on the merchant and items
+5. Extract individual items purchased (if visible)
+6. Identify tax amount and total amount (if different from main amount)
+7. Detect the currency used in the receipt
+
+CATEGORIES TO USE:
+- "Food & Dining" (restaurants, cafes, fast food, coffee shops)
+- "Shopping" (retail stores, online shopping, clothing, electronics)
+- "Transportation" (gas stations, Uber, parking, public transport)
+- "Healthcare" (pharmacies, medical services, hospitals)
+- "Entertainment" (movies, games, streaming services, events)
+- "Bills & Utilities" (electricity, water, internet, phone bills)
+- "Education" (school fees, books, courses, tuition)
+- "Other" (anything that doesn't fit above categories)
+
+RETURN ONLY VALID JSON IN THIS EXACT FORMAT:
+{
+  "amount": number,
+  "merchant": "string",
+  "date": "YYYY-MM-DD",
+  "category": "string",
+  "items": ["item1", "item2", "item3"],
+  "currency": "${userCurrency}",
+  "tax": number,
+  "total": number
+}
+
+RULES:
+- Convert all amounts to ${userCurrency} if different currency detected
+- If date not found or unclear, use today's date: ${today}
+- For merchant names: prioritize business names over addresses, phone numbers, or generic text
+- If merchant unclear, use "Unknown Merchant"
+- If amount not found, use 0
+- Ensure all strings are properly quoted
+- Do not include any explanations or text outside the JSON`;
   }
 
   private static parseLLMResponse(llmResponse: string, rawText: string, userCurrency: string): LLMReceiptData {
     try {
-      console.log('Raw LLM response:', llmResponse);
+      // Try to extract JSON from the response - multiple strategies
+      let jsonStr = '';
       
-      // Try to extract JSON from the response
+      // Strategy 1: Look for JSON object with curly braces
       const jsonMatch = llmResponse.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
-        const jsonStr = jsonMatch[0];
-        console.log('Extracted JSON string:', jsonStr);
-        
-        const parsed = JSON.parse(jsonStr);
-        console.log('Parsed JSON:', parsed);
-        
-        // Validate and clean the parsed data
-        const amount = typeof parsed.amount === 'number' ? parsed.amount : 
-                      typeof parsed.amount === 'string' ? parseFloat(parsed.amount) || 0 : 0;
-        
-        const merchant = parsed.merchant && typeof parsed.merchant === 'string' ? parsed.merchant : 'Unknown';
-        const date = parsed.date && typeof parsed.date === 'string' ? parsed.date : new Date().toISOString().split('T')[0];
-        const category = parsed.category && typeof parsed.category === 'string' ? parsed.category : 'Other';
-        const items = Array.isArray(parsed.items) ? parsed.items : [];
-        const tax = typeof parsed.tax === 'number' ? parsed.tax : 
-                   typeof parsed.tax === 'string' ? parseFloat(parsed.tax) || 0 : 0;
-        const total = typeof parsed.total === 'number' ? parsed.total : 
-                     typeof parsed.total === 'string' ? parseFloat(parsed.total) || amount : amount;
-        
-        return {
-          amount,
-          merchant,
-          date,
-          category,
-          items,
-          confidence: 0.85, // Higher confidence for LLM results
-          currency: userCurrency,
-          tax,
-          total,
-        };
+        jsonStr = jsonMatch[0];
+      } else {
+        // Strategy 2: Look for JSON array (if LLM returns array)
+        const arrayMatch = llmResponse.match(/\[[\s\S]*\]/);
+        if (arrayMatch) {
+          jsonStr = arrayMatch[0];
+        }
       }
+      
+      if (!jsonStr) {
+        throw new Error('No JSON found in LLM response');
+      }
+      
+      // Clean up the JSON string
+      jsonStr = jsonStr.replace(/```json/g, '').replace(/```/g, '').trim();
+      
+      const parsed = JSON.parse(jsonStr);
+      
+      // Validate and clean the parsed data with robust type checking
+      const amount = this.validateNumber(parsed.amount, 'amount');
+      const merchant = this.validateString(parsed.merchant, 'merchant', 'Unknown Merchant');
+      const date = this.validateDate(parsed.date);
+      const category = this.validateCategory(parsed.category);
+      const items = this.validateArray(parsed.items, 'items');
+      const tax = this.validateNumber(parsed.tax, 'tax');
+      const total = this.validateNumber(parsed.total, 'total', amount);
+      const currency = this.validateString(parsed.currency, 'currency', userCurrency);
+      
+      // Calculate confidence based on data quality
+      const confidence = this.calculateLLMConfidence(rawText, amount, merchant, items, category);
+      
+      return {
+        amount,
+        merchant,
+        date,
+        category,
+        items,
+        confidence,
+        currency,
+        tax,
+        total,
+      };
     } catch (error) {
-      console.error('Failed to parse LLM response:', error);
+      console.error('❌ Failed to parse LLM response:', error);
+      throw error;
     }
+  }
 
-    // Fallback to enhanced processing
-    return this.enhancedFallbackProcessing(rawText, userCurrency);
+  // Helper methods for robust data validation
+  private static validateNumber(value: any, fieldName: string, fallback: number = 0): number {
+    if (typeof value === 'number' && !isNaN(value)) {
+      return value;
+    }
+    if (typeof value === 'string') {
+      const parsed = parseFloat(value.replace(/[^\d.-]/g, ''));
+      if (!isNaN(parsed)) {
+        return parsed;
+      }
+    }
+    return fallback;
+  }
+
+  private static validateString(value: any, fieldName: string, fallback: string): string {
+    if (typeof value === 'string' && value.trim().length > 0) {
+      return value.trim();
+    }
+    return fallback;
+  }
+
+  private static validateDate(value: any): string {
+    if (typeof value === 'string' && value.trim().length > 0) {
+      try {
+        const date = new Date(value);
+        if (!isNaN(date.getTime())) {
+          return date.toISOString().split('T')[0];
+        }
+      } catch (error) {
+        // Invalid date format, using today
+      }
+    }
+    return new Date().toISOString().split('T')[0];
+  }
+
+  private static validateCategory(value: any): string {
+    const validCategories = [
+      'Food & Dining', 'Shopping', 'Transportation', 'Healthcare', 
+      'Entertainment', 'Bills & Utilities', 'Education', 'Other'
+    ];
+    
+    if (typeof value === 'string' && validCategories.includes(value)) {
+      return value;
+    }
+    
+    // Try to map common variations
+    const categoryMap: Record<string, string> = {
+      'food': 'Food & Dining',
+      'dining': 'Food & Dining',
+      'restaurant': 'Food & Dining',
+      'cafe': 'Food & Dining',
+      'transport': 'Transportation',
+      'transportation': 'Transportation',
+      'gas': 'Transportation',
+      'fuel': 'Transportation',
+      'uber': 'Transportation',
+      'lyft': 'Transportation',
+      'shopping': 'Shopping',
+      'store': 'Shopping',
+      'retail': 'Shopping',
+      'health': 'Healthcare',
+      'medical': 'Healthcare',
+      'pharmacy': 'Healthcare',
+      'entertainment': 'Entertainment',
+      'movie': 'Entertainment',
+      'game': 'Entertainment',
+      'bills': 'Bills & Utilities',
+      'utilities': 'Bills & Utilities',
+      'electricity': 'Bills & Utilities',
+      'education': 'Education',
+      'school': 'Education',
+      'tuition': 'Education'
+    };
+    
+    if (typeof value === 'string') {
+      const lowerValue = value.toLowerCase();
+      for (const [key, category] of Object.entries(categoryMap)) {
+        if (lowerValue.includes(key)) {
+          return category;
+        }
+      }
+    }
+    
+    console.log('⚠️ Invalid category, using "Other"');
+    return 'Other';
+  }
+
+  private static validateArray(value: any, fieldName: string): string[] {
+    if (Array.isArray(value)) {
+      return value.filter(item => typeof item === 'string' && item.trim().length > 0);
+    }
+    console.log(`⚠️ Invalid ${fieldName}, using empty array`);
+    return [];
+  }
+
+  private static calculateLLMConfidence(rawText: string, amount: number, merchant: string, items: string[], category: string): number {
+    let confidence = 0;
+    
+    // Text quality (0-20 points)
+    if (rawText.length > 50) confidence += 10;
+    if (rawText.length > 100) confidence += 10;
+    
+    // Amount confidence (0-25 points)
+    if (amount > 0) confidence += 15;
+    if (amount > 1 && amount < 100000) confidence += 10;
+    
+    // Merchant confidence (0-20 points)
+    if (merchant !== 'Unknown Merchant') confidence += 10;
+    if (merchant.length > 3 && merchant.length < 50) confidence += 10;
+    
+    // Items confidence (0-15 points)
+    if (items.length > 0) confidence += 10;
+    if (items.length > 2) confidence += 5;
+    
+    // Category confidence (0-10 points)
+    if (category !== 'Other') confidence += 10;
+    
+    // Pattern recognition (0-10 points)
+    if (/total|amount|rs\.|\$/.test(rawText.toLowerCase())) confidence += 5;
+    if (/date|time/.test(rawText.toLowerCase())) confidence += 5;
+    
+    return Math.min(confidence / 100, 1);
   }
 
   private static enhancedFallbackProcessing(rawText: string, userCurrency: string): LLMReceiptData {
+    console.log('🔧 Using enhanced fallback processing...');
+    
     const text = rawText.toLowerCase();
     
     // Enhanced amount extraction with multiple strategies
@@ -793,5 +880,47 @@ JSON:`;
       suggestions,
       confidence: Math.max(0, confidence),
     };
+  }
+
+    /**
+   * Test method to verify Google Gemini 2.5 Flash is working
+   */
+  static async testLLMService(): Promise<{
+    google: boolean;
+    details: Record<string, string>;
+  }> {
+    const results = {
+      google: false,
+      details: {} as Record<string, string>
+    };
+
+    // Test Google Gemini 2.5 Flash
+    try {
+      const googleKey = Constants.expoConfig?.extra?.googleAiApiKey;
+      if (googleKey) {
+        console.log('🧪 Testing Google Gemini 2.5 Flash...');
+        const response = await axios.post(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${googleKey}`,
+          {
+            contents: [{ parts: [{ text: 'Hello' }] }],
+            generationConfig: {
+              thinkingConfig: {
+                thinkingBudget: 0 // Disable thinking for faster response
+              }
+            }
+          },
+          { timeout: 5000 }
+        );
+        results.google = true;
+        results.details.google = 'Success';
+      } else {
+        results.details.google = 'No API key configured';
+      }
+    } catch (error) {
+      results.details.google = `Error: ${error instanceof Error ? error.message : 'Unknown error'}`;
+    }
+
+    console.log('🧪 Google Gemini 2.5 Flash Test Results:', results);
+    return results;
   }
 }
