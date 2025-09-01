@@ -30,6 +30,12 @@ export class ValidationUtils {
 
   static formatCurrency(amount: number, currency: string): string {
     try {
+      // Handle null, undefined, or invalid inputs
+      if (amount === null || amount === undefined) {
+        console.warn('Null or undefined amount provided to formatCurrency');
+        return '0.00';
+      }
+      
       // Validate inputs
       if (typeof amount !== 'number' || isNaN(amount)) {
         console.warn('Invalid amount provided to formatCurrency:', amount);

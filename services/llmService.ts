@@ -196,15 +196,32 @@ RULES:
 
   // Helper methods for robust data validation
   private static validateNumber(value: any, fieldName: string, fallback: number = 0): number {
+    // Handle null, undefined, or empty values
+    if (value === null || value === undefined || value === '') {
+      return fallback;
+    }
+    
     if (typeof value === 'number' && !isNaN(value)) {
       return value;
     }
+    
     if (typeof value === 'string') {
       const parsed = parseFloat(value.replace(/[^\d.-]/g, ''));
       if (!isNaN(parsed)) {
         return parsed;
       }
     }
+    
+    // Additional safety check for any other type
+    try {
+      const coerced = Number(value);
+      if (!isNaN(coerced)) {
+        return coerced;
+      }
+    } catch (error) {
+      console.warn(`Failed to validate number for ${fieldName}:`, value);
+    }
+    
     return fallback;
   }
 

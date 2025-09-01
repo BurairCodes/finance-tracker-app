@@ -323,7 +323,7 @@ export default function ReceiptScanner({ isVisible, onClose }: ReceiptScannerPro
                       <Text style={styles.dataCardTitle}>Amount</Text>
                     </View>
                     <Text style={styles.dataCardValue}>
-                      {receiptData.amount > 0 && typeof receiptData.amount === 'number'
+                      {receiptData.amount && typeof receiptData.amount === 'number' && receiptData.amount > 0
                         ? ExchangeRateService.formatCurrency(receiptData.amount, receiptData.currency || 'PKR')
                         : 'Not detected'
                       }
@@ -371,7 +371,7 @@ export default function ReceiptScanner({ isVisible, onClose }: ReceiptScannerPro
                         <Text style={styles.dataCardTitle}>Tax</Text>
                       </View>
                       <Text style={styles.dataCardValue}>
-                        {typeof receiptData.tax === 'number' && receiptData.tax > 0
+                        {receiptData.tax && typeof receiptData.tax === 'number' && receiptData.tax > 0
                           ? ExchangeRateService.formatCurrency(receiptData.tax, receiptData.currency || 'PKR')
                           : '0.00'
                         }
@@ -386,7 +386,7 @@ export default function ReceiptScanner({ isVisible, onClose }: ReceiptScannerPro
                         <Text style={styles.dataCardTitle}>Total</Text>
                       </View>
                       <Text style={styles.dataCardValue}>
-                        {typeof receiptData.total === 'number' && receiptData.total > 0
+                        {receiptData.total && typeof receiptData.total === 'number' && receiptData.total > 0
                           ? ExchangeRateService.formatCurrency(receiptData.total, receiptData.currency || 'PKR')
                           : '0.00'
                         }
