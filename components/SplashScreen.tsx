@@ -4,14 +4,13 @@ import {
   Text,
   StyleSheet,
   Animated,
-  Dimensions,
   Image,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Theme from '@/constants/Theme';
 
-const { width, height } = Dimensions.get('window');
+
 
 interface SplashScreenProps {
   onFinish: () => void;
@@ -21,17 +20,9 @@ export default function SplashScreen({ onFinish }: SplashScreenProps) {
   const logoScale = useRef(new Animated.Value(0)).current;
   const logoOpacity = useRef(new Animated.Value(0)).current;
   const textOpacity = useRef(new Animated.Value(0)).current;
-  const gradientOpacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     const startAnimation = () => {
-      // Start with gradient fade in
-      Animated.timing(gradientOpacity, {
-        toValue: 1,
-        duration: 500,
-        useNativeDriver: true,
-      }).start();
-
       // Logo scale and fade in
       Animated.parallel([
         Animated.timing(logoScale, {
@@ -65,15 +56,6 @@ export default function SplashScreen({ onFinish }: SplashScreenProps) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Animated.View style={[styles.gradientContainer, { opacity: gradientOpacity }]}>
-        <LinearGradient
-          colors={Theme.colors.gradientPrimary}
-          style={styles.gradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        />
-      </Animated.View>
-
       <View style={styles.content}>
         <Animated.View
           style={[
@@ -84,11 +66,13 @@ export default function SplashScreen({ onFinish }: SplashScreenProps) {
             },
           ]}
         >
-          <Image
-            source={require('@/assets/images/kharchax-logo.png')}
-            style={styles.logo}
-            resizeMode="contain"
-          />
+          <View style={styles.whiteCircle}>
+            <Image
+              source={require('@/assets/images/kharchax-logo.png')}
+              style={styles.logo}
+              resizeMode="contain"
+            />
+          </View>
         </Animated.View>
 
         <Animated.View style={[styles.textContainer, { opacity: textOpacity }]}>
@@ -105,12 +89,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Theme.colors.background,
   },
-  gradientContainer: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  gradient: {
-    flex: 1,
-  },
   content: {
     flex: 1,
     justifyContent: 'center',
@@ -119,16 +97,23 @@ const styles = StyleSheet.create({
   },
   logoContainer: {
     marginBottom: 40,
-    shadowColor: '#8B5CF6',
+  },
+  whiteCircle: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.15,
     shadowRadius: 16,
     elevation: 16,
   },
   logo: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+    width: 80,
+    height: 80,
   },
   textContainer: {
     alignItems: 'center',
@@ -136,15 +121,12 @@ const styles = StyleSheet.create({
   appName: {
     fontSize: 36,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: Theme.colors.textPrimary,
     marginBottom: 8,
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
   },
   tagline: {
     fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: Theme.colors.textSecondary,
     fontWeight: '500',
     textAlign: 'center',
   },

@@ -7,6 +7,7 @@ export default {
   scheme: "kharchax",
   userInterfaceStyle: "automatic",
   newArchEnabled: true,
+  owner: "burair",
   platforms: ["ios", "android", "web"],
   ios: {
     supportsTablet: true,
@@ -42,7 +43,7 @@ export default {
   extra: {
     router: {},
     eas: {
-      projectId: "aa5efeca-56a1-4d5e-bdf6-1832f39104e4"
+      projectId: "1e5123f1-8c9f-4f8f-84ca-b3cdaefa576c"
     },
     // Environment variables
     googleAiApiKey: process.env.GOOGLE_AI_API_KEY,
