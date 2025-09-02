@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, createContext, useContext, ReactNode } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from './useAuth';
 import { Database } from '@/types/database';
@@ -6,7 +6,35 @@ import { Database } from '@/types/database';
 type Notification = Database['public']['Tables']['notifications']['Row'];
 type NotificationType = 'budget' | 'bill' | 'insight' | 'security';
 
+interface NotificationsContextType {
+  notifications: Notification[];
+  loading: boolean;
+  error: string | null;
+  unreadCount: number;
+  fetchNotifications: () => Promise<void>;
+  markAsRead: (notificationId: string) => Promise<void>;
+  markAllAsRead: () => Promise<void>;
+  deleteNotification: (notificationId: string) => Promise<void>;
+  clearAllNotifications: () => Promise<void>;
+  getNotificationsByType: (type: NotificationType) => Notification[];
+  getUnreadNotifications: () => Notification[];
+}
+
+const NotificationsContext = createContext<NotificationsContextType | undefined>(undefined);
+
 export const useNotifications = () => {
+  const context = useContext(NotificationsContext);
+  if (!context) {
+    throw new Error('useNotifications must be used within a NotificationsProvider');
+  }
+  return context;
+};
+
+interface NotificationsProviderProps {
+  children: ReactNode;
+}
+
+export const NotificationsProvider: React.FC<NotificationsProviderProps> = ({ children }) => {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
@@ -158,15 +186,14 @@ export const useNotifications = () => {
             }
           } else if (payload.eventType === 'UPDATE') {
             const updatedNotification = payload.new as Notification;
-            setNotifications(prev => 
-              prev.map(n => 
+            setNotifications(prev => {
+              const updated = prev.map(n => 
                 n.id === updatedNotification.id ? updatedNotification : n
-              )
-            );
-            // Recalculate unread count
-            setUnreadCount(prev => {
-              const currentUnread = notifications.filter(n => !n.is_read).length;
-              return currentUnread;
+              );
+              // Recalculate unread count based on updated notifications
+              const newUnreadCount = updated.filter(n => !n.is_read).length;
+              setUnreadCount(newUnreadCount);
+              return updated;
             });
           } else if (payload.eventType === 'DELETE') {
             const deletedNotification = payload.old as Notification;
@@ -194,7 +221,7 @@ export const useNotifications = () => {
     return notifications.filter(n => !n.is_read);
   }, [notifications]);
 
-  return {
+  const value: NotificationsContextType = {
     notifications,
     loading,
     error,
@@ -207,4 +234,10 @@ export const useNotifications = () => {
     getNotificationsByType,
     getUnreadNotifications,
   };
+
+  return (
+    <NotificationsContext.Provider value={value}>
+      {children}
+    </NotificationsContext.Provider>
+  );
 };

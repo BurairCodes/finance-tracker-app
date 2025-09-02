@@ -9,18 +9,21 @@ import {
   Platform,
   Dimensions,
   Animated,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { TrendingUp, TrendingDown, DollarSign, Plus, CircleAlert as AlertCircle, Camera } from 'lucide-react-native';
+import { TrendingUp, TrendingDown, DollarSign, Plus, CircleAlert as AlertCircle, Camera, Bell, ChevronLeft } from 'lucide-react-native';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useBudgets } from '@/hooks/useBudgets';
+import { useNotifications } from '@/hooks/useNotifications';
 import { ExchangeRateService } from '@/services/exchangeRateService';
 import AuthScreen from '@/components/AuthScreen';
 import LoadingScreen from '@/components/LoadingScreen';
 import ReceiptScanner from '@/components/ReceiptScanner';
+import NotificationsList from '@/components/NotificationsList';
 import { router } from 'expo-router';
 // Removed unused responsiveStyles import
 import Theme from '@/constants/Theme';
@@ -30,8 +33,10 @@ export default function DashboardScreen() {
   const { profile } = useProfile(user?.id);
   const { transactions, loading: transactionsLoading, refetch } = useTransactions(user?.id);
   const { budgets } = useBudgets(user?.id);
+  const { unreadCount } = useNotifications();
   const [refreshing, setRefreshing] = useState(false);
   const [showReceiptScanner, setShowReceiptScanner] = useState(false);
+  const [showNotificationModal, setShowNotificationModal] = useState(false);
   const [fabExpanded, setFabExpanded] = useState(false);
   const fabAnimation = useRef(new Animated.Value(0)).current;
   const [monthlyStats, setMonthlyStats] = useState({
@@ -197,8 +202,25 @@ export default function DashboardScreen() {
         }
       >
         <View style={styles.header}>
-          <Text style={styles.greeting}>Welcome Back!</Text>
-          <Text style={styles.userName}>{profile?.full_name || user.user_metadata?.full_name || 'User'}</Text>
+          <View style={styles.headerContent}>
+            <View style={styles.headerText}>
+              <Text style={styles.greeting}>Welcome Back!</Text>
+              <Text style={styles.userName}>{profile?.full_name || user.user_metadata?.full_name || 'User'}</Text>
+            </View>
+            <TouchableOpacity 
+              style={styles.notificationButton}
+              onPress={() => setShowNotificationModal(true)}
+            >
+              <Bell size={24} color={Theme.colors.textPrimary} />
+              {unreadCount > 0 && (
+                <View style={styles.notificationBadge}>
+                  <Text style={styles.notificationBadgeText}>
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
 
         {budgetAlerts.length > 0 && (
@@ -411,6 +433,24 @@ export default function DashboardScreen() {
         isVisible={showReceiptScanner}
         onClose={() => setShowReceiptScanner(false)}
       />
+
+      {/* Notifications Modal */}
+      <Modal
+        visible={showNotificationModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+      >
+        <SafeAreaView style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setShowNotificationModal(false)}>
+              <ChevronLeft size={24} color={Theme.colors.textSecondary} />
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Notifications</Text>
+            <View style={{ width: 24 }} />
+          </View>
+          <NotificationsList />
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -427,6 +467,38 @@ const styles = StyleSheet.create({
   header: {
     padding: Theme.spacing.lg,
     paddingBottom: Theme.spacing.sm,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  headerText: {
+    flex: 1,
+  },
+  notificationButton: {
+    position: 'relative',
+    padding: Theme.spacing.sm,
+    borderRadius: Theme.borderRadius.md,
+    backgroundColor: Theme.colors.surface,
+    ...Theme.shadows.glass,
+  },
+  notificationBadge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    backgroundColor: Theme.colors.error,
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  notificationBadgeText: {
+    color: 'white',
+    fontSize: 10,
+    fontFamily: Theme.typography.fontFamily.bold,
   },
   greeting: {
     fontSize: Theme.typography.fontSize.base,
@@ -613,6 +685,24 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: Theme.colors.background,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: Theme.spacing.lg,
+    backgroundColor: Theme.colors.backgroundSecondary,
+    borderBottomWidth: 1,
+    borderBottomColor: Theme.colors.border,
+  },
+  modalTitle: {
+    fontSize: Theme.typography.fontSize.lg,
+    color: Theme.colors.textPrimary,
+    fontFamily: Theme.typography.fontFamily.bold,
   },
 
 });

@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { ExchangeRateService } from './exchangeRateService';
 import { NotificationService } from './notificationService';
 
 export class InsightService {
@@ -122,17 +123,17 @@ export class InsightService {
 
       // Create monthly insight with more detailed analysis
       const title = '📊 Monthly Financial Summary';
-      let message = `This month you spent ${userCurrency} ${totalExpense.toLocaleString()}`;
+      let message = `This month you spent ${ExchangeRateService.formatCurrency(totalExpense, userCurrency)}`;
       
       if (totalIncome > 0) {
-        message += ` and earned ${userCurrency} ${totalIncome.toLocaleString()}`;
-        message += `\nNet: ${userCurrency} ${(totalIncome - totalExpense).toLocaleString()}`;
+        message += ` and earned ${ExchangeRateService.formatCurrency(totalIncome, userCurrency)}`;
+        message += `\nNet: ${ExchangeRateService.formatCurrency(totalIncome - totalExpense, userCurrency)}`;
       }
       
       if (topCategories.length > 0) {
         message += `\nTop spending categories:`;
         topCategories.forEach(({ category, amount }) => {
-          message += `\n• ${category}: ${userCurrency} ${amount.toLocaleString()}`;
+          message += `\n• ${category}: ${ExchangeRateService.formatCurrency(amount, userCurrency)}`;
         });
       }
       

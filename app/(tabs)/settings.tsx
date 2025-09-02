@@ -142,7 +142,7 @@ export default function SettingsScreen() {
                 const report = ExportService.generateMonthlyReport(transactions);
                 Alert.alert(
                   'Monthly Report',
-                  `Income: $${report.totalIncome.toFixed(2)}\nExpenses: $${report.totalExpenses.toFixed(2)}\nNet Savings: $${report.netSavings.toFixed(2)}\n\nTop Categories:\n${report.topCategories.map(cat => `• ${cat.category}: $${cat.amount.toFixed(2)}`).join('\n')}`
+                  `Income: ${ExchangeRateService.formatCurrency(report.totalIncome, 'USD')}\nExpenses: ${ExchangeRateService.formatCurrency(report.totalExpenses, 'USD')}\nNet Savings: ${ExchangeRateService.formatCurrency(report.netSavings, 'USD')}\n\nTop Categories:\n${report.topCategories.map(cat => `• ${cat.category}: ${ExchangeRateService.formatCurrency(cat.amount, 'USD')}`).join('\n')}`
                 );
               } catch {
                 Alert.alert('Error', 'Failed to generate report');
@@ -335,7 +335,7 @@ export default function SettingsScreen() {
     },
     {
       title: 'Admin Panel',
-      subtitle: 'View system analytics (Demo)',
+      subtitle: 'View system analytics',
       icon: Shield,
       onPress: () => router.push('/admin'),
     },

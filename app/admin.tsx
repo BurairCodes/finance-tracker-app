@@ -166,19 +166,9 @@ interface User {
   last_login?: string;
   transaction_count: number;
   total_volume: number;
-}
+ }
 
-interface AdminAction {
-  id: string;
-  action_type: 'user_role_change' | 'user_ban' | 'user_unban' | 'system_config' | 'data_export';
-  description: string;
-  admin_user: string;
-  target_user?: string;
-  timestamp: string;
-  details?: any;
-}
-
-export default function AdminScreen() {
+ export default function AdminScreen() {
   const [stats, setStats] = useState<AdminStats>({
     totalUsers: 0,
     totalTransactions: 0,
@@ -196,10 +186,9 @@ export default function AdminScreen() {
     recentActivity: [],
   });
   const [users, setUsers] = useState<User[]>([]);
-  const [adminActions, setAdminActions] = useState<AdminAction[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [selectedTab, setSelectedTab] = useState<'overview' | 'users' | 'actions'>('overview');
+  const [selectedTab, setSelectedTab] = useState<'overview' | 'users'>('overview');
   const [showUserModal, setShowUserModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -207,54 +196,16 @@ export default function AdminScreen() {
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive'>('all');
 
   useEffect(() => {
-    checkAdminAccess();
+    fetchAdminData();
   }, []);
-
-  const checkAdminAccess = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        Alert.alert('Access Denied', 'You must be logged in to access the admin dashboard');
-        router.back();
-        return;
-      }
-
-      // Check if user has admin role
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('user_role')
-        .eq('id', user.id)
-        .single();
-
-      if (error || !profile) {
-        Alert.alert('Access Denied', 'Unable to verify admin permissions');
-        router.back();
-        return;
-      }
-
-      if (!['admin', 'super_admin'].includes(profile.user_role)) {
-        Alert.alert('Access Denied', 'You do not have permission to access the admin dashboard');
-        router.back();
-        return;
-      }
-
-      // If admin access is confirmed, fetch data
-      fetchAdminData();
-    } catch (error) {
-      console.error('Admin access check failed:', error);
-      Alert.alert('Error', 'Failed to verify admin access');
-      router.back();
-    }
-  };
 
   const fetchAdminData = async () => {
     try {
       setLoading(true);
-      await Promise.all([
-        fetchAdminStats(),
-        fetchUsers(),
-        fetchAdminActions(),
-      ]);
+             await Promise.all([
+         fetchAdminStats(),
+         fetchUsers(),
+       ]);
     } catch (error) {
       console.error('Failed to fetch admin data:', error);
       Alert.alert('Error', 'Failed to load admin data');
@@ -354,38 +305,21 @@ export default function AdminScreen() {
           amount: stats.amount 
         }));
 
-      // Get real recent activity from admin_actions table
-      const { data: recentAdminActions } = await supabase
-        .from('admin_actions')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(5);
-
-      // Get recent user signups
+      // Get recent user signups for activity feed
       const { data: recentSignups } = await supabase
         .from('profiles')
         .select('email, created_at')
         .order('created_at', { ascending: false })
-        .limit(3);
+        .limit(5);
 
-      // Combine real activity data
-      const recentActivity = [
-        ...(recentSignups?.map((signup, index) => ({
-          id: `signup-${index}`,
-          type: 'user_signup' as const,
-          description: 'New user registered',
-          timestamp: signup.created_at,
-          user: signup.email,
-        })) || []),
-        ...(recentAdminActions?.map((action, index) => ({
-          id: `action-${action.id}`,
-          type: 'admin_action' as const,
-          description: action.description,
-          timestamp: action.created_at,
-          user: action.admin_user,
-        })) || []),
-      ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-       .slice(0, 5);
+      // Create activity data from signups only (since admin_actions table was removed)
+      const recentActivity = (recentSignups || []).map((signup, index) => ({
+        id: `signup-${index}`,
+        type: 'user_signup' as const,
+        description: 'New user registered',
+        timestamp: signup.created_at,
+        user: signup.email,
+      }));
 
       setStats(prev => ({
         ...prev,
@@ -408,7 +342,7 @@ export default function AdminScreen() {
 
   const fetchUsers = async () => {
     try {
-      // Fetch profiles with user roles
+      // Fetch profiles (without user roles since they were removed)
       const { data: profiles, error } = await supabase
         .from('profiles')
         .select('*')
@@ -453,8 +387,8 @@ export default function AdminScreen() {
 
           return {
             ...profile,
-            user_role: profile.user_role || 'user', // Use actual user role from profile
-            is_active: profile.is_active !== false, // Default to active unless explicitly set to false
+            user_role: 'user' as const, // Default to user since roles were removed
+            is_active: true, // Default to active since status was removed
             last_login: lastLogin || profile.updated_at,
             transaction_count: transactionCount || 0,
             total_volume: totalVolume,
@@ -466,151 +400,14 @@ export default function AdminScreen() {
     } catch (error) {
       console.error('Failed to fetch users:', error);
     }
-  };
+     };
 
-  const fetchAdminActions = async () => {
-    try {
-      // Fetch real admin actions from the database
-      const { data: actions, error } = await supabase
-        .from('admin_actions')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(50);
-
-      if (error) {
-        console.error('Failed to fetch admin actions:', error);
-        // Fallback to empty array
-        setAdminActions([]);
-        return;
-      }
-
-      // Transform the data to match our interface
-      const transformedActions: AdminAction[] = (actions || []).map(action => ({
-        id: action.id,
-        action_type: action.action_type,
-        description: action.description,
-        admin_user: action.admin_user,
-        target_user: action.target_user,
-        timestamp: action.created_at,
-        details: action.details,
-      }));
-
-      setAdminActions(transformedActions);
-    } catch (error) {
-      console.error('Failed to fetch admin actions:', error);
-      setAdminActions([]);
-    }
-  };
-
-
-
-  const handleUserAction = async (action: 'promote' | 'demote' | 'ban' | 'unban', user: User) => {
-    const actionText = {
-      promote: 'promote to admin',
-      demote: 'demote to user',
-      ban: 'ban',
-      unban: 'unban',
-    }[action];
-
+   const handleUserAction = async (action: 'promote' | 'demote' | 'ban' | 'unban', user: User) => {
+    // Admin actions are disabled since user roles and admin_actions table were removed
     Alert.alert(
-      'Confirm Action',
-      `Are you sure you want to ${actionText} ${user.full_name}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Confirm',
-          style: action === 'ban' ? 'destructive' : 'default',
-          onPress: async () => {
-            try {
-              // Get current admin user
-              const { data: { user: currentAdmin } } = await supabase.auth.getUser();
-              if (!currentAdmin) {
-                Alert.alert('Error', 'You must be logged in to perform admin actions');
-                return;
-              }
-
-              let updateData: any = {};
-              let actionType: string = '';
-              let description: string = '';
-
-              // Determine what to update based on action
-              switch (action) {
-                case 'promote':
-                  updateData = { user_role: 'admin' };
-                  actionType = 'user_role_change';
-                  description = `Promoted ${user.full_name} to admin`;
-                  break;
-                case 'demote':
-                  updateData = { user_role: 'user' };
-                  actionType = 'user_role_change';
-                  description = `Demoted ${user.full_name} to user`;
-                  break;
-                case 'ban':
-                  updateData = { is_active: false };
-                  actionType = 'user_ban';
-                  description = `Banned ${user.full_name}`;
-                  break;
-                case 'unban':
-                  updateData = { is_active: true };
-                  actionType = 'user_unban';
-                  description = `Unbanned ${user.full_name}`;
-                  break;
-              }
-
-              // Update user profile in database
-              const { error: updateError } = await supabase
-                .from('profiles')
-                .update(updateData)
-                .eq('id', user.id);
-
-              if (updateError) {
-                throw updateError;
-              }
-
-              // Log admin action
-              const { error: logError } = await supabase
-                .from('admin_actions')
-                .insert({
-                  action_type: actionType,
-                  description,
-                  admin_user: currentAdmin.email,
-                  target_user: user.email,
-                  details: {
-                    action,
-                    target_user_id: user.id,
-                    previous_role: user.user_role,
-                    new_role: action === 'promote' ? 'admin' : action === 'demote' ? 'user' : user.user_role,
-                    previous_status: user.is_active,
-                    new_status: action === 'ban' ? false : action === 'unban' ? true : user.is_active,
-                  },
-                });
-
-              if (logError) {
-                console.error('Failed to log admin action:', logError);
-              }
-
-              // Update local state
-              setUsers(prev => prev.map(u => {
-                if (u.id === user.id) {
-                  return {
-                    ...u,
-                    ...updateData,
-                  };
-                }
-                return u;
-              }));
-
-              // Refresh admin actions to show the new action
-              await fetchAdminActions();
-
-              Alert.alert('Success', `User ${actionText} successfully`);
-            } catch (error) {
-              console.error('Failed to perform admin action:', error);
-              Alert.alert('Error', 'Failed to perform action. Please try again.');
-            }
-          },
-        },
-      ]
+      'Admin Actions Disabled',
+      'User management features are currently disabled. The admin panel is in read-only mode.',
+      [{ text: 'OK' }]
     );
   };
 
@@ -673,7 +470,7 @@ export default function AdminScreen() {
             <DollarSign size={24} color={Theme.colors.accent} />
           </View>
           <Text style={styles.metricValue}>
-            ₨{(stats.totalVolume / 1000000).toFixed(1)}M
+            {ExchangeRateService.formatCurrency(stats.totalVolume / 1000000, 'USD')}M
           </Text>
           <Text style={styles.metricLabel}>Total Volume</Text>
           <View style={styles.metricTrend}>
@@ -744,7 +541,7 @@ export default function AdminScreen() {
             </View>
             <View style={styles.categoryStats}>
               <Text style={styles.categoryCount}>{item.count} transactions</Text>
-              <Text style={styles.categoryAmount}>₨{(item.amount / 1000).toFixed(1)}K</Text>
+              <Text style={styles.categoryAmount}>{ExchangeRateService.formatCurrency(item.amount / 1000, 'USD')}K</Text>
             </View>
           </View>
         ))}
@@ -896,110 +693,62 @@ export default function AdminScreen() {
         </View>
       ))}
     </ScrollView>
-  );
+     );
 
-  const renderActionsTab = () => (
-    <ScrollView 
-      style={styles.tabContent}
-      contentContainerStyle={{ paddingBottom: 20 }}
-    >
-      {adminActions.map((action) => (
-        <View key={action.id} style={styles.actionCard}>
-          <View style={styles.actionHeader}>
-            <View style={styles.actionIcon}>
-              {action.action_type === 'user_role_change' && <UserCheck size={20} color={Theme.colors.primary} />}
-              {action.action_type === 'user_ban' && <UserX size={20} color={Theme.colors.error} />}
-              {action.action_type === 'user_unban' && <UserCheck size={20} color={Theme.colors.success} />}
-              {action.action_type === 'system_config' && <Settings size={20} color={Theme.colors.warning} />}
-              {action.action_type === 'data_export' && <Download size={20} color={Theme.colors.info} />}
-            </View>
-            <View style={styles.actionInfo}>
-              <Text style={styles.actionDescription}>{action.description}</Text>
-              <Text style={styles.actionAdmin}>by {action.admin_user}</Text>
-              <Text style={styles.actionTimestamp}>
-                {new Date(action.timestamp).toLocaleString()}
-              </Text>
-            </View>
-          </View>
-          {action.target_user && (
-            <View style={styles.actionTarget}>
-              <Text style={styles.actionTargetLabel}>Target:</Text>
-              <Text style={styles.actionTargetUser}>{action.target_user}</Text>
-            </View>
-          )}
-        </View>
-      ))}
-    </ScrollView>
-  );
-
-
-
-  return (
+   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => router.back()}
-        >
-          <ArrowLeft size={24} color={Theme.colors.textPrimary} />
-        </TouchableOpacity>
-        <Text style={styles.title}>Admin Dashboard</Text>
-      </View>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity 
+            style={styles.backButton}
+            onPress={() => router.back()}
+          >
+            <ArrowLeft size={24} color={Theme.colors.textPrimary} />
+          </TouchableOpacity>
+          <Text style={styles.title}>Admin Dashboard</Text>
+        </View>
 
-      {/* Tab Navigation */}
-      <View style={styles.tabNavigation}>
-        <TouchableOpacity 
-          style={[styles.tabButton, selectedTab === 'overview' && styles.tabActive]}
-          onPress={() => setSelectedTab('overview')}
-        >
-          <BarChart3 size={16} color={selectedTab === 'overview' ? '#FFFFFF' : Theme.colors.textSecondary} />
-          <Text style={[styles.tabText, selectedTab === 'overview' && styles.tabTextActive]}>Overview</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={[styles.tabButton, selectedTab === 'users' && styles.tabActive]}
-          onPress={() => setSelectedTab('users')}
-        >
-          <Users size={16} color={selectedTab === 'users' ? '#FFFFFF' : Theme.colors.textSecondary} />
-          <Text style={[styles.tabText, selectedTab === 'users' && styles.tabTextActive]}>Users</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={[styles.tabButton, selectedTab === 'actions' && styles.tabActive]}
-          onPress={() => setSelectedTab('actions')}
-        >
-          <Activity size={16} color={selectedTab === 'actions' ? '#FFFFFF' : Theme.colors.textSecondary} />
-          <Text style={[styles.tabText, selectedTab === 'actions' && styles.tabTextActive]}>Actions</Text>
-        </TouchableOpacity>
-        
+                 {/* Tab Navigation */}
+         <View style={styles.tabNavigation}>
+           <TouchableOpacity 
+             style={[styles.tabButton, selectedTab === 'overview' && styles.tabActive]}
+             onPress={() => setSelectedTab('overview')}
+           >
+             <BarChart3 size={16} color={selectedTab === 'overview' ? '#FFFFFF' : Theme.colors.textSecondary} />
+             <Text style={[styles.tabText, selectedTab === 'overview' && styles.tabTextActive]}>Overview</Text>
+           </TouchableOpacity>
+           
+           <TouchableOpacity 
+             style={[styles.tabButton, selectedTab === 'users' && styles.tabActive]}
+             onPress={() => setSelectedTab('users')}
+           >
+             <Users size={16} color={selectedTab === 'users' ? '#FFFFFF' : Theme.colors.textSecondary} />
+             <Text style={[styles.tabText, selectedTab === 'users' && styles.tabTextActive]}>Users</Text>
+           </TouchableOpacity>
+         </View>
 
-      </View>
-
-      {/* Content */}
-      <ScrollView 
-        style={styles.content}
-        contentContainerStyle={{ flexGrow: 1 }}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-      >
-        {loading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={Theme.colors.primary} />
-            <Text style={styles.loadingText}>Loading admin data...</Text>
-          </View>
-        ) : (
-          <>
-            {selectedTab === 'overview' && renderOverviewTab()}
-            {selectedTab === 'users' && renderUsersTab()}
-            {selectedTab === 'actions' && renderActionsTab()}
-
-          </>
-        )}
-      </ScrollView>
-    </SafeAreaView>
-  );
+        {/* Content */}
+        <ScrollView 
+          style={styles.content}
+          contentContainerStyle={{ flexGrow: 1 }}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+        >
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={Theme.colors.primary} />
+              <Text style={styles.loadingText}>Loading admin data...</Text>
+            </View>
+          ) : (
+                         <>
+               {selectedTab === 'overview' && renderOverviewTab()}
+               {selectedTab === 'users' && renderUsersTab()}
+             </>
+          )}
+        </ScrollView>
+      </SafeAreaView>
+    );
 }
 
 const styles = StyleSheet.create({

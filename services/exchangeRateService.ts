@@ -1,4 +1,5 @@
 import { CURRENCIES } from '@/constants/Categories';
+import { CurrencyFormatter } from '@/utils/currencyFormatter';
 import { ValidationUtils } from '@/utils/validation';
 
 interface ExchangeRateResponse {
@@ -224,7 +225,7 @@ export class ExchangeRateService {
   }
 
   static formatCurrency(amount: number, currencyCode: string): string {
-    return ValidationUtils.formatCurrency(amount, currencyCode);
+    return CurrencyFormatter.formatDisplay(amount, currencyCode);
   }
 
   // New method to check API status
