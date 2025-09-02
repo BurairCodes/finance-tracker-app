@@ -147,7 +147,7 @@ export default function AnalyticsScreen() {
             user.id,
             'insight',
             '📈 Monthly Spending Overview',
-            `This month you've spent ${userBaseCurrency} ${totalExpenses.toLocaleString()}. Top category: ${topCategory?.[0] || 'None'}`
+            `This month you've spent ${ExchangeRateService.formatCurrency(totalExpenses, userBaseCurrency)}. Top category: ${topCategory?.[0] || 'None'}`
           );
         } catch (error) {
           console.error('Failed to create monthly insight notification:', error);

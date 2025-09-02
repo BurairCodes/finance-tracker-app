@@ -14,6 +14,7 @@ import { Picker } from '@react-native-picker/picker';
 import { X } from 'lucide-react-native';
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, CURRENCIES } from '@/constants/Categories';
 import CurrencyPicker from './CurrencyPicker';
+import CalendarPicker from './CalendarPicker';
 import { ValidationUtils } from '@/utils/validation';
 import { Database } from '@/types/database';
 import Theme from '@/constants/Theme';
@@ -211,14 +212,11 @@ export default function EditTransactionModal({
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Date *</Text>
-            <TextInput
-              style={styles.textInput}
+            <CalendarPicker
+              label="Date *"
               value={formData.date}
-              onChangeText={(text) => setFormData(prev => ({ ...prev, date: text }))}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor={Theme.colors.textTertiary}
-              maxLength={10}
+              onDateChange={(date) => setFormData(prev => ({ ...prev, date }))}
+              placeholder="Select transaction date"
             />
           </View>
         </ScrollView>

@@ -18,7 +18,8 @@ import {
   Lightbulb,
   ChevronRight,
   Brain,
-  Sparkles
+  Sparkles,
+  RotateCcw
 } from 'lucide-react-native';
 import { useAuth } from '@/hooks/useAuth';
 import { useTransactions } from '@/hooks/useTransactions';
@@ -44,6 +45,89 @@ interface FinancialInsight {
   icon: React.ComponentType<{ size?: number; color?: string }>;
   action?: string;
 }
+
+// Custom markdown renderer for AI messages
+const MarkdownText: React.FC<{ text: string; style?: any }> = ({ text, style }) => {
+  // Remove the disclaimer if present and handle it separately
+  const disclaimerRegex = /\n⚠️ This is AI-generated financial guidance for educational purposes only\./;
+  const hasDisclaimer = disclaimerRegex.test(text);
+  const cleanText = text.replace(disclaimerRegex, '');
+  
+  // Split text into lines to handle lists and formatting
+  const lines = cleanText.split('\n');
+  const renderedLines = lines.map((line, lineIndex) => {
+    // Skip empty lines to reduce unnecessary spacing
+    if (line.trim() === '') {
+      return <View key={`empty-${lineIndex}`} style={{ height: 2 }} />;
+    }
+    
+    // Handle bullet points and numbered lists
+    const bulletMatch = line.match(/^[\s]*[•\-\*]\s+(.+)$/);
+    const numberMatch = line.match(/^[\s]*\d+\.\s+(.+)$/);
+    
+    if (bulletMatch || numberMatch) {
+      const content = bulletMatch ? bulletMatch[1] : numberMatch![1];
+      return (
+        <View key={`line-${lineIndex}`} style={styles.listItemContainer}>
+          <Text style={[styles.listBullet, style]}>
+            {bulletMatch ? '•' : `${lineIndex + 1}.`}
+          </Text>
+          <Text style={[styles.listText, style]}>{content}</Text>
+        </View>
+      );
+    }
+    
+    // Handle bold text within the line
+    const parts: React.ReactNode[] = [];
+    let currentIndex = 0;
+    const boldRegex = /\*\*(.*?)\*\*/g;
+    let boldMatch;
+    
+    while ((boldMatch = boldRegex.exec(line)) !== null) {
+      // Add text before the match
+      if (boldMatch.index > currentIndex) {
+        parts.push(
+          <Text key={`text-${lineIndex}-${currentIndex}`} style={style}>
+            {line.slice(currentIndex, boldMatch.index)}
+          </Text>
+        );
+      }
+      // Add bold text
+      parts.push(
+        <Text key={`bold-${lineIndex}-${currentIndex}`} style={[style, { fontFamily: Theme.typography.fontFamily.bold }]}>
+          {boldMatch[1]}
+        </Text>
+      );
+      currentIndex = boldMatch.index + boldMatch[0].length;
+    }
+    
+    // Add remaining text
+    if (currentIndex < line.length) {
+      parts.push(
+        <Text key={`text-end-${lineIndex}`} style={style}>
+          {line.slice(currentIndex)}
+        </Text>
+      );
+    }
+    
+    return (
+      <Text key={`line-${lineIndex}`} style={style}>
+        {parts.length > 0 ? parts : line}
+      </Text>
+    );
+  });
+  
+  return (
+    <View style={{ alignSelf: 'flex-start' }}>
+      {renderedLines}
+      {hasDisclaimer && (
+        <Text style={[styles.disclaimerText, { color: style?.color || Theme.colors.textTertiary }]}>
+          ⚠️ This is AI-generated financial guidance for educational purposes only.
+        </Text>
+      )}
+    </View>
+  );
+};
 
 export default function FinanceCoach() {
   const { user } = useAuth();
@@ -159,12 +243,19 @@ export default function FinanceCoach() {
     setIsLoading(true);
 
     try {
+      // Debug logging to verify the question is being passed correctly
+      console.log('Sending question to AI:', inputText);
+      console.log('User email:', user?.email);
+      
       const response = await AIService.getFinancialAdvice(
         inputText,
         transactions,
         budgets,
         user?.email || ''
       );
+
+      // Debug logging to verify the response
+      console.log('AI Response received:', response);
 
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -175,7 +266,8 @@ export default function FinanceCoach() {
       };
 
       setMessages(prev => [...prev, aiMessage]);
-    } catch {
+    } catch (error) {
+      console.error('Error in sendMessage:', error);
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         text: "I'm sorry, I'm having trouble processing your request right now. Please try again in a moment.",
@@ -187,6 +279,19 @@ export default function FinanceCoach() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const clearConversation = () => {
+    if (user?.email) {
+      AIService.clearConversationHistory(user.email);
+    }
+    setMessages([{
+      id: 'welcome',
+      text: "Hello! I'm your AI Finance Coach powered by Google Gemini. I can help you with budgeting advice, spending insights, financial tips, and answer any money-related questions. What would you like to know?",
+      isUser: false,
+      timestamp: new Date(),
+      type: 'tip'
+    }]);
   };
 
   const handleInsightAction = (action: string) => {
@@ -236,6 +341,10 @@ export default function FinanceCoach() {
             </View>
           </View>
           <Text style={styles.subtitle}>Advanced financial guidance with Google Gemini</Text>
+          <TouchableOpacity style={styles.clearButton} onPress={clearConversation}>
+            <RotateCcw size={16} color={Theme.colors.primary} />
+            <Text style={styles.clearButtonText}>Clear Chat</Text>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -283,19 +392,20 @@ export default function FinanceCoach() {
                   {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </Text>
               </View>
-              <View style={[styles.messageBubble, getMessageStyle(message)]}>
-                <Text style={[
-                  styles.messageText,
-                  message.isUser ? styles.userMessageText : 
-                  message.type === 'advice' ? styles.adviceMessageText :
-                  message.type === 'warning' ? styles.warningMessageText :
-                  message.type === 'tip' ? styles.tipMessageText :
-                  message.type === 'ai' ? styles.aiMessageText :
-                  styles.aiMessageText
-                ]}>
-                  {decodeHtmlEntities(message.text)}
-                </Text>
-              </View>
+                              <View style={[styles.messageBubble, getMessageStyle(message)]}>
+                  <MarkdownText
+                    text={decodeHtmlEntities(message.text)}
+                    style={[
+                      styles.messageText,
+                      message.isUser ? styles.userMessageText : 
+                      message.type === 'advice' ? styles.adviceMessageText :
+                      message.type === 'warning' ? styles.warningMessageText :
+                      message.type === 'tip' ? styles.tipMessageText :
+                      message.type === 'ai' ? styles.aiMessageText :
+                      styles.aiMessageText
+                    ]}
+                  />
+                </View>
             </View>
           ))}
           {isLoading && (
@@ -376,6 +486,22 @@ const styles = StyleSheet.create({
     color: Theme.colors.textTertiary,
     fontFamily: Theme.typography.fontFamily.regular,
   },
+  clearButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-end',
+    marginTop: Theme.spacing.sm,
+    paddingHorizontal: Theme.spacing.sm,
+    paddingVertical: Theme.spacing.xs,
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    borderRadius: Theme.borderRadius.sm,
+  },
+  clearButtonText: {
+    fontSize: Theme.typography.fontSize.xs,
+    color: Theme.colors.primary,
+    fontFamily: Theme.typography.fontFamily.medium,
+    marginLeft: Theme.spacing.xs,
+  },
   content: {
     flex: 1,
     padding: Theme.spacing.lg,
@@ -442,13 +568,16 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   messageContainer: {
-    marginBottom: Theme.spacing.md,
+    marginBottom: Theme.spacing.sm,
+    alignSelf: 'stretch', // Ensure container takes full width
   },
   userMessageContainer: {
     alignItems: 'flex-end',
+    alignSelf: 'stretch',
   },
   aiMessageContainer: {
     alignItems: 'flex-start',
+    alignSelf: 'stretch',
   },
   messageHeader: {
     flexDirection: 'row',
@@ -465,9 +594,11 @@ const styles = StyleSheet.create({
     maxWidth: '80%',
     padding: Theme.spacing.md,
     borderRadius: Theme.borderRadius.lg,
+    alignSelf: 'flex-start', // Ensure bubble only takes needed space
   },
   userMessage: {
     backgroundColor: Theme.colors.primary,
+    alignSelf: 'flex-end',
   },
   aiMessage: {
     backgroundColor: '#1A1A2E',
@@ -478,6 +609,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
+    alignSelf: 'flex-start',
   },
   adviceMessage: {
     backgroundColor: 'rgba(59, 130, 246, 0.1)',
@@ -533,6 +665,26 @@ const styles = StyleSheet.create({
     color: Theme.colors.primary,
     marginLeft: Theme.spacing.sm,
     fontFamily: Theme.typography.fontFamily.medium,
+  },
+  disclaimerText: {
+    fontSize: Theme.typography.fontSize.xs,
+    color: Theme.colors.textTertiary,
+    marginTop: Theme.spacing.xs,
+    fontFamily: Theme.typography.fontFamily.regular,
+    lineHeight: 16,
+  },
+  listItemContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginVertical: 1,
+  },
+  listBullet: {
+    marginRight: Theme.spacing.xs,
+    fontSize: Theme.typography.fontSize.sm,
+  },
+  listText: {
+    fontSize: Theme.typography.fontSize.sm,
+    flex: 1,
   },
   inputContainer: {
     flexDirection: 'row',

@@ -98,7 +98,6 @@ export interface Database {
         };
       };
       notifications: {
-        Row: {
           id: string;
           user_id: string;
           type: 'budget' | 'bill' | 'insight' | 'security';

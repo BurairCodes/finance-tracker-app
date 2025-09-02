@@ -15,6 +15,7 @@ import { Picker } from '@react-native-picker/picker';
 import { X, Calendar, FileText, CreditCard } from 'lucide-react-native';
 import { EXPENSE_CATEGORIES, CURRENCIES } from '@/constants/Categories';
 import CurrencyPicker from './CurrencyPicker';
+import CalendarPicker from './CalendarPicker';
 import { ValidationUtils } from '@/utils/validation';
 import Theme from '@/constants/Theme';
 
@@ -165,18 +166,12 @@ export default function BillModal({ visible, onClose, onSave }: BillModalProps) 
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Due Date *</Text>
-            <View style={styles.inputContainer}>
-              <Calendar size={20} color={Theme.colors.textTertiary} style={styles.inputIcon} />
-              <TextInput
-                style={styles.textInput}
-                value={formData.due_date}
-                onChangeText={(text) => setFormData(prev => ({ ...prev, due_date: text }))}
-                placeholder="YYYY-MM-DD"
-                placeholderTextColor={Theme.colors.textTertiary}
-                maxLength={10}
-              />
-            </View>
+            <CalendarPicker
+              label="Due Date *"
+              value={formData.due_date}
+              onDateChange={(date) => setFormData(prev => ({ ...prev, due_date: date }))}
+              placeholder="Select due date"
+            />
           </View>
 
           <View style={styles.formGroup}>
