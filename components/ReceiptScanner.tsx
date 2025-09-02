@@ -25,19 +25,15 @@ import {
   Calendar,
   Tag,
   FileText,
-  Upload,
   RotateCcw,
   Smartphone,
-  Eye,
   Sparkles,
-  CheckCircle,
-  AlertCircle
+  CheckCircle
 } from 'lucide-react-native';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { useTransactions } from '@/hooks/useTransactions';
 import { OCRService, ReceiptData } from '@/services/ocrService';
-import { ExchangeRateService } from '@/services/exchangeRateService';
 import TransactionModal from './TransactionModal';
 import Theme from '@/constants/Theme';
 
@@ -56,8 +52,6 @@ export default function ReceiptScanner({ isVisible, onClose }: ReceiptScannerPro
   const [scannedImage, setScannedImage] = useState<string | null>(null);
   const [receiptData, setReceiptData] = useState<ReceiptData | null>(null);
   const [showTransactionModal, setShowTransactionModal] = useState(false);
-  const [showRawText, setShowRawText] = useState(false);
-  const [processingMethod, setProcessingMethod] = useState<'gemini' | 'enhanced'>('gemini');
   const [manualData, setManualData] = useState({
     amount: '',
     merchant: '',
@@ -130,16 +124,9 @@ export default function ReceiptScanner({ isVisible, onClose }: ReceiptScannerPro
       const userCurrency = profile?.base_currency || 'PKR';
       const receiptData = await OCRService.analyzeReceipt(imageBase64, userCurrency);
       
-      // Set processing method based on confidence
-      if (receiptData.confidence > 0.7) {
-        setProcessingMethod('gemini');
-      } else {
-        setProcessingMethod('enhanced');
-      }
-      
       setReceiptData(receiptData);
       setManualData({
-        amount: receiptData.amount.toString(),
+        amount: receiptData.amount,
         merchant: receiptData.merchant,
         category: receiptData.category,
         date: receiptData.date,
@@ -180,7 +167,6 @@ export default function ReceiptScanner({ isVisible, onClose }: ReceiptScannerPro
   const handleClose = () => {
     setScannedImage(null);
     setReceiptData(null);
-    setShowRawText(false);
     setManualData({
       amount: '',
       merchant: '',
@@ -194,20 +180,9 @@ export default function ReceiptScanner({ isVisible, onClose }: ReceiptScannerPro
   const retakePicture = () => {
     setScannedImage(null);
     setReceiptData(null);
-    setShowRawText(false);
   };
 
-  const getConfidenceColor = (confidence: number) => {
-    if (confidence >= 0.8) return '#10B981';
-    if (confidence >= 0.6) return '#F59E0B';
-    return '#EF4444';
-  };
 
-  const getConfidenceIcon = (confidence: number) => {
-    if (confidence >= 0.8) return <CheckCircle size={16} color="#10B981" />;
-    if (confidence >= 0.6) return <AlertCircle size={16} color="#F59E0B" />;
-    return <AlertCircle size={16} color="#EF4444" />;
-  };
 
   return (
     <Modal visible={isVisible} animationType="slide">
@@ -298,23 +273,7 @@ export default function ReceiptScanner({ isVisible, onClose }: ReceiptScannerPro
               <View style={styles.dataContainer}>
                 <View style={styles.headerRow}>
                   <Text style={styles.sectionTitle}>Extracted Data</Text>
-                  <TouchableOpacity 
-                    style={styles.rawTextButton}
-                    onPress={() => setShowRawText(!showRawText)}
-                  >
-                    <Eye size={16} color={Theme.colors.primary} />
-                    <Text style={styles.rawTextButtonText}>
-                      {showRawText ? 'Hide' : 'Show'} Raw Text
-                    </Text>
-                  </TouchableOpacity>
                 </View>
-
-                {showRawText && (
-                  <View style={styles.rawTextContainer}>
-                    <Text style={styles.rawTextLabel}>Raw OCR Text:</Text>
-                    <Text style={styles.rawText}>{receiptData.rawText || 'No text detected'}</Text>
-                  </View>
-                )}
                 
                 <View style={styles.dataGrid}>
                   <View style={styles.dataCard}>
@@ -322,19 +281,9 @@ export default function ReceiptScanner({ isVisible, onClose }: ReceiptScannerPro
                       <DollarSign size={20} color={Theme.colors.primary} />
                       <Text style={styles.dataCardTitle}>Amount</Text>
                     </View>
-                                         <Text style={styles.dataCardValue}>
-                       {(() => {
-                         try {
-                           if (receiptData.amount && typeof receiptData.amount === 'number' && receiptData.amount > 0) {
-                             return ExchangeRateService.formatCurrency(receiptData.amount, receiptData.currency || 'PKR');
-                           }
-                           return 'Not detected';
-                         } catch (error) {
-                           console.error('Error formatting amount:', error);
-                           return 'Not detected';
-                         }
-                       })()}
-                     </Text>
+                    <Text style={styles.dataCardValue}>
+                      {receiptData.amount || 'Not detected'}
+                    </Text>
                   </View>
 
                   <View style={styles.dataCard}>
@@ -360,90 +309,9 @@ export default function ReceiptScanner({ isVisible, onClose }: ReceiptScannerPro
                     </View>
                     <Text style={styles.dataCardValue}>{receiptData.date || new Date().toISOString().split('T')[0]}</Text>
                   </View>
-
-                  {receiptData.currency && (
-                    <View style={styles.dataCard}>
-                      <View style={styles.dataCardHeader}>
-                        <DollarSign size={20} color={Theme.colors.primary} />
-                        <Text style={styles.dataCardTitle}>Currency</Text>
-                      </View>
-                      <Text style={styles.dataCardValue}>{receiptData.currency || 'PKR'}</Text>
-                    </View>
-                  )}
-
-                  {receiptData.tax && receiptData.tax > 0 && (
-                    <View style={styles.dataCard}>
-                      <View style={styles.dataCardHeader}>
-                        <DollarSign size={20} color={Theme.colors.primary} />
-                        <Text style={styles.dataCardTitle}>Tax</Text>
-                      </View>
-                                             <Text style={styles.dataCardValue}>
-                         {(() => {
-                           try {
-                             if (receiptData.tax && typeof receiptData.tax === 'number' && receiptData.tax > 0) {
-                               return ExchangeRateService.formatCurrency(receiptData.tax, receiptData.currency || 'PKR');
-                             }
-                             return '0.00';
-                           } catch (error) {
-                             console.error('Error formatting tax:', error);
-                             return '0.00';
-                           }
-                         })()}
-                       </Text>
-                    </View>
-                  )}
-
-                  {receiptData.total && receiptData.total !== receiptData.amount && (
-                    <View style={styles.dataCard}>
-                      <View style={styles.dataCardHeader}>
-                        <DollarSign size={20} color={Theme.colors.primary} />
-                        <Text style={styles.dataCardTitle}>Total</Text>
-                      </View>
-                                             <Text style={styles.dataCardValue}>
-                         {(() => {
-                           try {
-                             if (receiptData.total && typeof receiptData.total === 'number' && receiptData.total > 0) {
-                               return ExchangeRateService.formatCurrency(receiptData.total, receiptData.currency || 'PKR');
-                             }
-                             return '0.00';
-                           } catch (error) {
-                             console.error('Error formatting total:', error);
-                             return '0.00';
-                           }
-                         })()}
-                       </Text>
-                    </View>
-                  )}
                 </View>
 
-                {receiptData.items && receiptData.items.length > 0 && (
-                  <View style={styles.itemsContainer}>
-                    <Text style={styles.itemsLabel}>Detected Items</Text>
-                    <View style={styles.itemsList}>
-                      {receiptData.items.map((item, index) => (
-                        <View key={index} style={styles.itemRow}>
-                          <View style={styles.itemBullet} />
-                          <Text style={styles.itemText}>{item}</Text>
-                        </View>
-                      ))}
-                    </View>
-                  </View>
-                )}
 
-                <View style={styles.confidenceContainer}>
-                  <View style={styles.confidenceHeader}>
-                    {getConfidenceIcon(receiptData.confidence)}
-                    <Text style={styles.confidenceText}>
-                      Confidence: {Math.round(receiptData.confidence * 100)}%
-                    </Text>
-                  </View>
-                  {receiptData.confidence > 0.8 && (
-                    <View style={styles.aiEnhancedContainer}>
-                      <Sparkles size={14} color="#10B981" />
-                      <Text style={styles.aiLabel}>AI Enhanced</Text>
-                    </View>
-                  )}
-                </View>
 
                 <TouchableOpacity
                   style={styles.editButton}
@@ -464,16 +332,10 @@ export default function ReceiptScanner({ isVisible, onClose }: ReceiptScannerPro
                 <View style={styles.loadingCard}>
                   <ActivityIndicator size="large" color={Theme.colors.primary} />
                   <Text style={styles.loadingText}>
-                    {processingMethod === 'gemini' 
-                      ? 'Analyzing receipt with Google Gemini...' 
-                      : 'Processing with enhanced parsing...'
-                    }
+                    Analyzing receipt...
                   </Text>
                   <Text style={styles.loadingSubtext}>
-                    {processingMethod === 'gemini' 
-                      ? 'This may take a few seconds' 
-                      : 'Almost done...'
-                    }
+                    This may take a few seconds
                   </Text>
                 </View>
               </View>
@@ -487,7 +349,7 @@ export default function ReceiptScanner({ isVisible, onClose }: ReceiptScannerPro
           onClose={() => setShowTransactionModal(false)}
           onSave={handleSaveTransaction}
           initialData={receiptData ? {
-            amount: receiptData.amount.toString(),
+            amount: receiptData.amount,
             description: receiptData.merchant,
             category: receiptData.category,
             date: receiptData.date,

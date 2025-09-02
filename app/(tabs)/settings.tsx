@@ -44,6 +44,8 @@ import { useTransactions } from '@/hooks/useTransactions';
 import { useBudgets } from '@/hooks/useBudgets';
 import { router } from 'expo-router';
 import Theme from '@/constants/Theme';
+import GoogleOAuthTest from '@/components/GoogleOAuthTest';
+import NativeGoogleSignInTest from '@/components/NativeGoogleSignInTest';
 
 // Removed unused screen dimensions
 
@@ -411,6 +413,20 @@ export default function SettingsScreen() {
         </View>
 
 
+
+        {/* Native Google Sign-In Test Section */}
+        <View style={styles.oauthTestSection}>
+          <Text style={styles.oauthTestTitle}>Native Google Sign-In</Text>
+          <Text style={styles.oauthTestSubtitle}>Test native Android Google Sign-In (no browser!)</Text>
+          <NativeGoogleSignInTest />
+        </View>
+
+        {/* Google OAuth Test Section */}
+        <View style={styles.oauthTestSection}>
+          <Text style={styles.oauthTestTitle}>Web-Based Google OAuth</Text>
+          <Text style={styles.oauthTestSubtitle}>Test web-based Google OAuth (opens browser)</Text>
+          <GoogleOAuthTest />
+        </View>
 
         {/* Sign Out */}
         <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
@@ -849,6 +865,26 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: Theme.colors.primary,
     fontFamily: 'Inter-SemiBold',
+  },
+  oauthTestSection: {
+    backgroundColor: Theme.colors.surface,
+    padding: Theme.spacing.lg,
+    borderRadius: Theme.borderRadius.md,
+    marginBottom: Theme.spacing.lg,
+    borderWidth: 1,
+    borderColor: Theme.colors.border,
+  },
+  oauthTestTitle: {
+    fontSize: Theme.typography.fontSize.lg,
+    color: Theme.colors.textPrimary,
+    fontFamily: Theme.typography.fontFamily.bold,
+    marginBottom: Theme.spacing.sm,
+  },
+  oauthTestSubtitle: {
+    fontSize: Theme.typography.fontSize.sm,
+    color: Theme.colors.textTertiary,
+    fontFamily: Theme.typography.fontFamily.regular,
+    marginBottom: Theme.spacing.md,
   },
 
 });

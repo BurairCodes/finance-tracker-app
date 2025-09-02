@@ -3,16 +3,10 @@ import Constants from 'expo-constants';
 
 
 export interface ReceiptData {
-  amount: number;
+  amount: string;
   merchant: string;
-  date: string;
   category: string;
-  confidence: number;
-  rawText: string;
-  items?: string[];
-  currency?: string;
-  tax?: number;
-  total?: number;
+  date: string;
 }
 
 export class OCRService {
@@ -150,18 +144,12 @@ export class OCRService {
       const llmData = await LLMService.processReceiptText(rawText, userCurrency);
       
       // If LLM processing was successful and has reasonable confidence, return the result
-      if (llmData.confidence > 0.5) {
+      if (llmData && llmData.amount && llmData.confidence > 0.5) {
         return {
-          amount: llmData.amount,
+          amount: llmData.amount.toString(),
           merchant: llmData.merchant,
           date: llmData.date,
           category: llmData.category,
-          confidence: llmData.confidence,
-          rawText: rawText,
-          items: llmData.items,
-          currency: llmData.currency,
-          tax: llmData.tax,
-          total: llmData.total,
         };
       }
     } catch (error) {
@@ -171,10 +159,12 @@ export class OCRService {
     // Fallback to enhanced parsing if LLM fails or has low confidence
     try {
       const enhancedResult = this.parseWithEnhancedAI(rawText);
-      if (enhancedResult && enhancedResult.confidence > 0.6) {
+      if (enhancedResult) {
         return {
-          ...enhancedResult,
-          currency: userCurrency,
+          amount: enhancedResult.amount.toString(),
+          merchant: enhancedResult.merchant,
+          date: enhancedResult.date,
+          category: enhancedResult.category,
         };
       }
     } catch (error) {
@@ -193,26 +183,18 @@ export class OCRService {
     const merchant = this.extractMerchant(text);
     const date = this.extractDate(text);
     const category = this.categorizeMerchant(merchant);
-    const items = this.extractItems(text);
-    const confidence = this.calculateConfidence(text, amount, merchant);
 
     console.log('📊 Basic regex parsing results:');
     console.log('- Amount:', amount);
     console.log('- Merchant:', merchant);
     console.log('- Date:', date);
     console.log('- Category:', category);
-    console.log('- Items:', items);
-    console.log('- Confidence:', confidence);
 
     return {
-      amount,
+      amount: amount.toString(),
       merchant,
       date,
       category,
-      confidence,
-      rawText: text,
-      items,
-      currency: userCurrency,
     };
   }
 
@@ -225,18 +207,12 @@ export class OCRService {
       console.log('LLM processing results:', llmData);
       
       // If LLM processing was successful, return the result
-      if (llmData.confidence > 0.6) {
+      if (llmData && llmData.amount) {
         return {
-          amount: llmData.amount,
+          amount: llmData.amount.toString(),
           merchant: llmData.merchant,
           date: llmData.date,
           category: llmData.category,
-          confidence: llmData.confidence,
-          rawText: text,
-          items: llmData.items,
-          currency: llmData.currency,
-          tax: llmData.tax,
-          total: llmData.total,
         };
       }
     } catch (error) {
@@ -246,12 +222,9 @@ export class OCRService {
     // Fallback to enhanced parsing if LLM fails or has low confidence
     try {
       const enhancedResult = this.parseWithEnhancedAI(text);
-      if (enhancedResult && enhancedResult.confidence > 70) {
+      if (enhancedResult) {
         console.log('Enhanced AI parsing results:', enhancedResult);
-        return {
-          ...enhancedResult,
-          currency: userCurrency,
-        };
+        return enhancedResult;
       }
     } catch (error) {
       console.log('Enhanced AI parsing failed, falling back to basic regex:', error);
@@ -262,26 +235,18 @@ export class OCRService {
     const merchant = this.extractMerchant(text);
     const date = this.extractDate(text);
     const category = this.categorizeMerchant(merchant);
-    const items = this.extractItems(text);
-    const confidence = this.calculateConfidence(text, amount, merchant);
 
     console.log('Basic regex parsing results:');
     console.log('- Amount:', amount);
     console.log('- Merchant:', merchant);
     console.log('- Date:', date);
     console.log('- Category:', category);
-    console.log('- Items:', items);
-    console.log('- Confidence:', confidence);
 
     return {
-      amount,
+      amount: amount.toString(),
       merchant,
       date,
       category,
-      confidence,
-      rawText: text,
-      items,
-      currency: userCurrency,
     };
   }
 
@@ -308,13 +273,10 @@ export class OCRService {
       const confidence = this.calculateConfidenceEnhanced(text, amount, merchant, items);
 
       return {
-        amount,
+        amount: amount.toString(),
         merchant,
         date,
         category,
-        items: items.slice(0, 8), // Allow more items
-        confidence,
-        rawText: text,
       };
 
     } catch (error) {

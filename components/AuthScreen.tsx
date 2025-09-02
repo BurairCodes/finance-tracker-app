@@ -83,7 +83,7 @@ export default function AuthScreen() {
         // Success - the user will be automatically redirected
         console.log('Google Sign-In initiated successfully');
       }
-    } catch {
+    } catch (error) {
       console.error('Google Sign-In Exception:', error);
       Alert.alert(
         'Error', 

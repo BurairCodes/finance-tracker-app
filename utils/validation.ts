@@ -33,5 +33,4 @@ export class ValidationUtils {
   static formatCurrency(amount: number, currency: string): string {
     return CurrencyFormatter.formatDisplay(amount, currency);
   }
-  }
 }

@@ -5,7 +5,7 @@ import { Database } from '@/types/database';
 import { ExchangeRateService } from './exchangeRateService';
 
 type NotificationType = 'budget' | 'bill' | 'insight' | 'security';
-type Notification = Database['public']['Tables']['notifications']['Insert'];
+type Notification = Database['public']['Tables']['notifications']['Row'];
 
 export class NotificationService {
   // Request notification permissions

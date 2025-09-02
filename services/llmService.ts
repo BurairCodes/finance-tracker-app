@@ -17,7 +17,10 @@ interface LLMReceiptData {
 export class LLMService {
   // Google Gemini 2.5 Flash endpoint
   private static get GEMINI_ENDPOINT() {
-    const googleKey = Constants.expoConfig?.extra?.googleAiApiKey;
+    // Try multiple sources for the API key
+    const googleKey = process.env.EXPO_PUBLIC_GOOGLE_AI_API_KEY || 
+                     Constants.expoConfig?.extra?.googleAiApiKey ||
+                     process.env.GOOGLE_AI_API_KEY;
     
     return {
       name: 'Google Gemini 2.5 Flash',
@@ -29,17 +32,30 @@ export class LLMService {
   }
   
     static async processReceiptText(rawText: string, userCurrency: string = 'PKR'): Promise<LLMReceiptData> {
+    console.log('🚀 Starting LLM receipt processing...');
+    console.log('📝 Raw text length:', rawText.length);
+    console.log('💰 User currency:', userCurrency);
+    
     try {
       const endpoint = this.GEMINI_ENDPOINT;
+      console.log('🔑 Endpoint config:', {
+        name: endpoint.name,
+        url: endpoint.url,
+        hasApiKey: !!endpoint.apiKey,
+        apiKeyLength: endpoint.apiKey ? endpoint.apiKey.length : 0
+      });
       
       // Check if Google AI API key is configured
       if (!endpoint.apiKey) {
+        console.log('❌ No Google AI API key found, using fallback processing');
         return this.enhancedFallbackProcessing(rawText, userCurrency);
       }
 
+      console.log('✅ Google AI API key found, attempting LLM processing...');
+      
       try {
-        // Google AI API format (following official documentation)
-        const response = await axios.post(`${endpoint.url}?key=${endpoint.apiKey}`, {
+        console.log('📤 Sending request to Gemini API...');
+        const requestPayload = {
           contents: [
             {
               parts: [
@@ -56,25 +72,54 @@ export class LLMService {
               thinkingBudget: 0 // Disable thinking for faster response
             }
           }
-        }, {
+        };
+        
+        console.log('📋 Request payload:', JSON.stringify(requestPayload, null, 2));
+        
+        // Google AI API format (following official documentation)
+        const response = await axios.post(`${endpoint.url}?key=${endpoint.apiKey}`, requestPayload, {
           headers: {
             ...endpoint.headers,
           },
           timeout: 15000,
         });
         
-        const result = (response.data as any).candidates[0]?.content?.parts[0]?.text || '';
+        console.log('📥 Gemini API response received');
+        console.log('📊 Response status:', response.status);
+        console.log('📄 Response data structure:', Object.keys(response.data as object));
         
+        const result = (response.data as any).candidates[0]?.content?.parts[0]?.text || '';
+        console.log('🤖 LLM response text length:', result.length);
+        console.log('📝 LLM response preview:', result.substring(0, 200) + (result.length > 200 ? '...' : ''));
+        
+        if (!result) {
+          console.log('⚠️ No text content in LLM response, using fallback');
+          return this.enhancedFallbackProcessing(rawText, userCurrency);
+        }
+        
+        console.log('🔍 Parsing LLM response...');
         const llmData = this.parseLLMResponse(result, rawText, userCurrency);
+        console.log('✅ LLM parsing completed, confidence:', llmData.confidence);
         
         // If LLM processing was successful, return the result
         if (llmData.confidence > 0.5) {
+          console.log('🎯 LLM processing successful, returning result');
           return llmData;
+        } else {
+          console.log('⚠️ LLM confidence too low (', llmData.confidence, '), using fallback');
         }
       } catch (llmError: any) {
+        console.log('❌ LLM processing failed:', llmError.message);
+        console.log('🔍 Error details:', {
+          status: llmError.response?.status,
+          statusText: llmError.response?.statusText,
+          data: llmError.response?.data,
+          message: llmError.message
+        });
         // LLM processing failed, continue to fallback
       }
       
+      console.log('🔄 LLM processing failed, using enhanced fallback');
       // If Gemini fails, use enhanced fallback
       return this.enhancedFallbackProcessing(rawText, userCurrency);
     } catch (error) {
@@ -139,6 +184,8 @@ RULES:
   }
 
   private static parseLLMResponse(llmResponse: string, rawText: string, userCurrency: string): LLMReceiptData {
+    console.log('🔍 Starting LLM response parsing...');
+    console.log('📝 Input response length:', llmResponse.length);
     try {
       // Try to extract JSON from the response - multiple strategies
       let jsonStr = '';
@@ -147,22 +194,28 @@ RULES:
       const jsonMatch = llmResponse.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         jsonStr = jsonMatch[0];
+        console.log('✅ Found JSON object using strategy 1');
       } else {
         // Strategy 2: Look for JSON array (if LLM returns array)
         const arrayMatch = llmResponse.match(/\[[\s\S]*\]/);
         if (arrayMatch) {
           jsonStr = arrayMatch[0];
+          console.log('✅ Found JSON array using strategy 2');
         }
       }
       
       if (!jsonStr) {
+        console.log('❌ No JSON found in LLM response');
+        console.log('🔍 Response content:', llmResponse);
         throw new Error('No JSON found in LLM response');
       }
       
       // Clean up the JSON string
       jsonStr = jsonStr.replace(/```json/g, '').replace(/```/g, '').trim();
+      console.log('🧹 Cleaned JSON string:', jsonStr.substring(0, 200) + (jsonStr.length > 200 ? '...' : ''));
       
       const parsed = JSON.parse(jsonStr);
+      console.log('✅ JSON parsed successfully:', Object.keys(parsed));
       
       // Validate and clean the parsed data with robust type checking
       const amount = this.validateNumber(parsed.amount, 'amount');
@@ -176,17 +229,42 @@ RULES:
       
       // Calculate confidence based on data quality
       const confidence = this.calculateLLMConfidence(rawText, amount, merchant, items, category);
+      console.log('📊 Raw confidence calculated:', confidence);
+      
+      // Ensure all values are valid types with additional safety checks
+      const safeAmount = this.ensureValidNumber(amount, 0);
+      const safeTax = this.ensureValidNumber(tax, 0);
+      const safeTotal = this.ensureValidNumber(total, safeAmount);
+      const safeConfidence = this.ensureValidNumber(confidence, 0.5);
+      
+      const safeMerchant = this.ensureValidString(merchant, 'Unknown Merchant');
+      const safeDate = this.ensureValidString(date, new Date().toISOString().split('T')[0]);
+      const safeCategory = this.ensureValidString(category, 'Other');
+      const safeCurrency = this.ensureValidString(currency, userCurrency);
+      const safeItems = Array.isArray(items) ? items.filter(item => typeof item === 'string') : [];
+      
+      console.log('🔍 Final parsed data:', {
+        amount: safeAmount,
+        merchant: safeMerchant,
+        date: safeDate,
+        category: safeCategory,
+        items: safeItems.length,
+        confidence: safeConfidence,
+        currency: safeCurrency,
+        tax: safeTax,
+        total: safeTotal,
+      });
       
       return {
-        amount,
-        merchant,
-        date,
-        category,
-        items,
-        confidence,
-        currency,
-        tax,
-        total,
+        amount: safeAmount,
+        merchant: safeMerchant,
+        date: safeDate,
+        category: safeCategory,
+        items: safeItems,
+        confidence: Math.max(0, Math.min(1, safeConfidence)),
+        currency: safeCurrency,
+        tax: safeTax,
+        total: safeTotal,
       };
     } catch (error) {
       console.error('❌ Failed to parse LLM response:', error);
@@ -337,6 +415,8 @@ RULES:
 
   private static enhancedFallbackProcessing(rawText: string, userCurrency: string): LLMReceiptData {
     console.log('🔧 Using enhanced fallback processing...');
+    console.log('📝 Processing text length:', rawText.length);
+    console.log('💰 User currency:', userCurrency);
     
     try {
       const text = rawText.toLowerCase();
@@ -359,6 +439,8 @@ RULES:
       // Enhanced currency detection
       const detectedCurrency = this.extractCurrencyEnhanced(rawText);
       
+
+      
       // Enhanced tax extraction
       const extractedTax = this.extractTaxEnhanced(text);
       
@@ -370,17 +452,28 @@ RULES:
       // Calculate confidence based on extraction quality
       const confidence = this.calculateConfidence(rawText, amount, merchant, items);
 
-      // Ensure all values are valid types
+      // Ensure all values are valid types with additional safety checks
+      const safeAmount = this.ensureValidNumber(amount, 0);
+      const safeTax = this.ensureValidNumber(tax, 0);
+      const safeTotal = this.ensureValidNumber(total, safeAmount);
+      const safeConfidence = this.ensureValidNumber(confidence, 0.5);
+      
+      const safeMerchant = this.ensureValidString(merchant, 'Unknown Merchant');
+      const safeDate = this.ensureValidString(date, new Date().toISOString().split('T')[0]);
+      const safeCategory = this.ensureValidString(category, 'Other');
+      const safeCurrency = this.ensureValidString(userCurrency, 'PKR');
+      const safeItems = Array.isArray(items) ? items.filter(item => typeof item === 'string') : [];
+
       return {
-        amount: typeof amount === 'number' && !isNaN(amount) ? amount : 0,
-        merchant: typeof merchant === 'string' ? merchant : 'Unknown Merchant',
-        date: typeof date === 'string' ? date : new Date().toISOString().split('T')[0],
-        category: typeof category === 'string' ? category : 'Other',
-        items: Array.isArray(items) ? items : [],
-        confidence: typeof confidence === 'number' && !isNaN(confidence) ? Math.max(0, Math.min(1, confidence)) : 0.5,
-        currency: typeof userCurrency === 'string' ? userCurrency : 'PKR',
-        tax: typeof tax === 'number' && !isNaN(tax) ? tax : 0,
-        total: typeof total === 'number' && !isNaN(total) ? total : 0,
+        amount: safeAmount,
+        merchant: safeMerchant,
+        date: safeDate,
+        category: safeCategory,
+        items: safeItems,
+        confidence: Math.max(0, Math.min(1, safeConfidence)),
+        currency: safeCurrency,
+        tax: safeTax,
+        total: safeTotal,
       };
     } catch (error) {
       console.error('❌ Error in enhanced fallback processing:', error);
@@ -397,6 +490,56 @@ RULES:
         total: 0,
       };
     }
+  }
+
+  // Helper methods to ensure valid data types
+  private static ensureValidNumber(value: any, fallback: number): number {
+    if (value === null || value === undefined || value === '') {
+      return fallback;
+    }
+    
+    if (typeof value === 'number' && !isNaN(value)) {
+      return value;
+    }
+    
+    if (typeof value === 'string') {
+      const parsed = parseFloat(value.replace(/[^\d.-]/g, ''));
+      if (!isNaN(parsed)) {
+        return parsed;
+      }
+    }
+    
+    try {
+      const coerced = Number(value);
+      if (!isNaN(coerced)) {
+        return coerced;
+      }
+    } catch (error) {
+      console.warn('Failed to ensure valid number:', value);
+    }
+    
+    return fallback;
+  }
+
+  private static ensureValidString(value: any, fallback: string): string {
+    if (value === null || value === undefined) {
+      return fallback;
+    }
+    
+    if (typeof value === 'string' && value.trim().length > 0) {
+      return value.trim();
+    }
+    
+    try {
+      const stringified = String(value);
+      if (stringified.trim().length > 0) {
+        return stringified.trim();
+      }
+    } catch (error) {
+      console.warn('Failed to ensure valid string:', value);
+    }
+    
+    return fallback;
   }
 
   private static convertToUserCurrency(amount: number, fromCurrency: string, toCurrency: string): number {
@@ -923,6 +1066,12 @@ RULES:
     google: boolean;
     details: Record<string, string>;
   }> {
+    console.log('🧪 Starting LLM service test...');
+    console.log('🔍 Available environment variables:', {
+      NODE_ENV: process.env.NODE_ENV,
+      EXPO_PUBLIC_GOOGLE_AI_API_KEY: process.env.EXPO_PUBLIC_GOOGLE_AI_API_KEY ? 'Set' : 'Not set',
+      GOOGLE_AI_API_KEY: process.env.GOOGLE_AI_API_KEY ? 'Set' : 'Not set'
+    });
     const results = {
       google: false,
       details: {} as Record<string, string>
@@ -930,31 +1079,100 @@ RULES:
 
     // Test Google Gemini 2.5 Flash
     try {
-      const googleKey = Constants.expoConfig?.extra?.googleAiApiKey;
+      const googleKey = process.env.EXPO_PUBLIC_GOOGLE_AI_API_KEY || 
+                       Constants.expoConfig?.extra?.googleAiApiKey ||
+                       process.env.GOOGLE_AI_API_KEY;
+          console.log('🔑 Google API key check:', {
+      hasKey: !!googleKey,
+      keyLength: googleKey ? googleKey.length : 0,
+      keyPreview: googleKey ? googleKey.substring(0, 10) + '...' : 'None'
+    });
+    
+    // Debug environment variables
+    console.log('🔍 Environment variables check:', {
+      EXPO_PUBLIC_GOOGLE_AI_API_KEY: !!process.env.EXPO_PUBLIC_GOOGLE_AI_API_KEY,
+      GOOGLE_AI_API_KEY: !!process.env.GOOGLE_AI_API_KEY,
+      Constants_extra: !!Constants.expoConfig?.extra?.googleAiApiKey
+    });
+      
       if (googleKey) {
         console.log('🧪 Testing Google Gemini 2.5 Flash...');
+        console.log('📤 Sending test request to Gemini API...');
+        
+        const testPayload = {
+          contents: [{ parts: [{ text: 'Hello' }] }],
+          generationConfig: {
+            thinkingConfig: {
+              thinkingBudget: 0 // Disable thinking for faster response
+            }
+          }
+        };
+        
+        console.log('📋 Test payload:', JSON.stringify(testPayload, null, 2));
+        
         const response = await axios.post(
           `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${googleKey}`,
-          {
-            contents: [{ parts: [{ text: 'Hello' }] }],
-            generationConfig: {
-              thinkingConfig: {
-                thinkingBudget: 0 // Disable thinking for faster response
-              }
-            }
-          },
+          testPayload,
           { timeout: 5000 }
         );
+        
+        console.log('📥 Test response received:', {
+          status: response.status,
+          statusText: response.statusText,
+          dataKeys: Object.keys(response.data as object)
+        });
+        
         results.google = true;
         results.details.google = 'Success';
+        console.log('✅ Google Gemini test successful');
       } else {
+        console.log('❌ No Google AI API key configured');
         results.details.google = 'No API key configured';
       }
-    } catch (error) {
+    } catch (error: any) {
+      console.log('❌ Google Gemini test failed:', error.message);
+      console.log('🔍 Error details:', {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        message: error.message
+      });
       results.details.google = `Error: ${error instanceof Error ? error.message : 'Unknown error'}`;
     }
 
     console.log('🧪 Google Gemini 2.5 Flash Test Results:', results);
     return results;
+  }
+
+  /**
+   * Test receipt processing with sample text
+   */
+  static async testReceiptProcessing(): Promise<void> {
+    console.log('🧪 Testing receipt processing...');
+    
+    const sampleReceiptText = `
+    STARBUCKS COFFEE
+    123 Main Street
+    Date: 2024-01-15
+    Time: 14:30
+    
+    ITEMS:
+    Latte Grande     Rs. 450
+    Muffin           Rs. 200
+    
+    SUBTOTAL:        Rs. 650
+    TAX:             Rs. 65
+    TOTAL:           Rs. 715
+    
+    Thank you for your purchase!
+    `;
+    
+    try {
+      console.log('📝 Sample receipt text:', sampleReceiptText);
+      const result = await this.processReceiptText(sampleReceiptText, 'PKR');
+      console.log('✅ Receipt processing test completed:', result);
+    } catch (error) {
+      console.error('❌ Receipt processing test failed:', error);
+    }
   }
 }

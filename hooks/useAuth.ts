@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Platform } from 'react-native';
+import { Platform, Linking } from 'react-native';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { OAuthUtils } from '@/utils/oauth';
+import { GoogleOAuthConfig, logGoogleOAuthConfig, validateGoogleOAuthConfig } from '@/config/googleOAuth';
 import { NotificationService } from '@/services/notificationService';
+import * as WebBrowser from 'expo-web-browser';
+import { NativeGoogleAuth } from '@/config/nativeGoogleAuth';
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
@@ -61,19 +64,28 @@ export function useAuth() {
   };
 
   const signInWithGoogle = async () => {
-    const oauthConfig = OAuthUtils.getOAuthConfig();
-    
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: oauthConfig.redirectTo,
-        queryParams: {
-          access_type: 'offline',
-          prompt: 'consent',
-        },
-      },
-    });
-    return { data, error };
+    try {
+      console.log('🤖 Starting Native Google Sign-In...');
+      
+      // Use native Google Sign-In
+      const result = await NativeGoogleAuth.signIn();
+      
+      if (result.success) {
+        console.log('✅ Native Google Sign-In successful');
+        return { data: result.data, error: null };
+      } else {
+        console.error('❌ Native Google Sign-In failed:', result.error);
+        return { data: null, error: { message: result.error } };
+      }
+    } catch (error) {
+      console.error('❌ Native Google Sign-In Exception:', error);
+      return { 
+        data: null, 
+        error: { 
+          message: error instanceof Error ? error.message : 'Unknown error occurred' 
+        } 
+      };
+    }
   };
 
   const signOut = async () => {
